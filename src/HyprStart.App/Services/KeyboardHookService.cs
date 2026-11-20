@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using System.Threading;
+using System.Windows.Threading;
 using HyprStart.App.Interop;
 using HyprStart.Core.Input;
 
@@ -74,6 +75,165 @@ internal sealed class KeyboardHookService : IDisposable
             if (Interlocked.Decrement(ref _pauseCount) < 0) Volatile.Write(ref _pauseCount, 0);
         }
     }
+
+    // ---------- режим прямой записи комбинации ----------
+
+    // Коды клавиш-модификаторов. Низкоуровневый хук присылает в основном
+    // левый/правый вариант (LMENU/RMENU), но иногда и обобщённый — держим оба.
+    private const int VK_SHIFT = 0x10;
+    private const int VK_CONTROL = 0x11;
+    private const int VK_MENU = 0x12;
+    private const int VK_LSHIFT = 0xA0;
+    private const int VK_RSHIFT = 0xA1;
+    private const int VK_LCONTROL = 0xA2;
+    private const int VK_RCONTROL = 0xA3;
+    private const int VK_LMENU = 0xA4;
+    private const int VK_RMENU = 0xA5;
+    private const int VK_LWIN = 0x5B;
+    private const int VK_RWIN = 0x5C;
+
+    private static readonly object CaptureSync = new();
+
+    // Колбэк записи: (модификаторы, виртуальный код) -> комбинация принята.
+    private static Func<uint, uint, bool>? _capture;
+
+    // Модификаторы, нажатые ПО СОБЫТИЯМ ХУКА. GetAsyncKeyState в момент
+    // WM_SYSKEYDOWN ещё не обновился для только что нажатой клавиши.
+    private static uint _captureMods;
+
+    // Временный экземпляр хука, если interceptWindowsKey=false и хука не было.
+    private static KeyboardHookService? _captureTemp;
+
+    /// <summary>Идёт запись комбинации (все клавиши глушатся).</summary>
+    public static bool IsCapturing => Volatile.Read(ref _capture) is not null;
+
+    /// <summary>
+    /// Включает перехват одной комбинации прямо из WH_KEYBOARD_LL.
+    /// Пока режим активен, модификаторы и основная клавиша в систему не уходят:
+    /// Alt не открывает меню, Win не открывает «Пуск», окно не теряет фокус.
+    /// Dispose возвращает клавиатуру в обычный режим и снимает временный хук.
+    /// </summary>
+    public static IDisposable BeginCapture(Func<uint, uint, bool> callback)
+    {
+        lock (CaptureSync)
+        {
+            Volatile.Write(ref _captureMods, 0u);
+            Volatile.Write(ref _capture, callback);
+
+            if (_current is null)
+            {
+                var temp = new KeyboardHookService(new WinKeyStateMachine());
+                temp.Start();
+                _captureTemp = temp;
+                AppLog.Write("hook: временный перехват поднят на время записи");
+            }
+        }
+
+        return new CaptureScope();
+    }
+
+    private sealed class CaptureScope : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            KeyboardHookService? temp;
+            lock (CaptureSync)
+            {
+                Volatile.Write(ref _capture, null);
+                Volatile.Write(ref _captureMods, 0u);
+                temp = _captureTemp;
+                _captureTemp = null;
+            }
+
+            if (temp is not null)
+            {
+                temp.Dispose();
+                AppLog.Write("hook: временный перехват снят");
+            }
+        }
+    }
+
+    /// <summary>Бит модификатора для кода клавиши (0 — не модификатор).</summary>
+    private static uint ModifierBit(int vk) => vk switch
+    {
+        VK_MENU or VK_LMENU or VK_RMENU => HotkeySpec.ModAlt,
+        VK_CONTROL or VK_LCONTROL or VK_RCONTROL => HotkeySpec.ModControl,
+        VK_SHIFT or VK_LSHIFT or VK_RSHIFT => HotkeySpec.ModShift,
+        VK_LWIN or VK_RWIN => HotkeySpec.ModWin,
+        _ => 0u,
+    };
+
+    /// <summary>Страховка: модификаторы, которые физически зажаты прямо сейчас.</summary>
+    private static uint ModifiersFromKeyboard()
+    {
+        uint mods = 0;
+        if (IsPhysicallyDown(VK_MENU)) mods |= HotkeySpec.ModAlt;
+        if (IsPhysicallyDown(VK_CONTROL)) mods |= HotkeySpec.ModControl;
+        if (IsPhysicallyDown(VK_SHIFT)) mods |= HotkeySpec.ModShift;
+        if (IsPhysicallyDown(VK_LWIN) || IsPhysicallyDown(VK_RWIN)) mods |= HotkeySpec.ModWin;
+        return mods;
+    }
+
+    private static bool IsPhysicallyDown(int vk)
+        => (NativeMethods.GetAsyncKeyState(vk) & 0x8000) != 0;
+
+    /// <summary>
+    /// Режим записи: true — событие проглотить. Выполняется на потоке хука,
+    /// поэтому всё, что может подождать, отдаётся в Dispatcher окна настроек.
+    /// </summary>
+    private static bool TryCapture(int message, int vk)
+    {
+        var callback = Volatile.Read(ref _capture);
+        if (callback is null) return false;
+
+        bool down;
+        if (message == NativeMethods.WM_KEYDOWN || message == NativeMethods.WM_SYSKEYDOWN) down = true;
+        else if (message == NativeMethods.WM_KEYUP || message == NativeMethods.WM_SYSKEYUP) down = false;
+        else return false;
+
+        uint bit = ModifierBit(vk);
+        if (bit != 0)
+        {
+            // Модификатор глушим в обе стороны: его нажатие не должно открыть
+            // системное меню (Alt) или «Пуск» (Win) и снять фокус с настроек.
+            uint mods = Volatile.Read(ref _captureMods);
+            Volatile.Write(ref _captureMods, down ? (mods | bit) : (mods & ~bit));
+            return true;
+        }
+
+        if (!down) return true;
+
+        uint all = Volatile.Read(ref _captureMods) | ModifiersFromKeyboard();
+
+        // Колбэк живёт в UI-потоке: отсюда его звать нельзя (хук должен
+        // вернуться за миллисекунды, иначе Windows снимает хук).
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is not null)
+        {
+            dispatcher.BeginInvoke(
+                DispatcherPriority.Input,
+                new Action(() =>
+                {
+                    try
+                    {
+                        if (callback(all, (uint)vk))
+                            AppLog.Write($"hook: комбинация перехвачена mods=0x{all:X} vk=0x{vk:X}");
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Write($"hook: ошибка записи комбинации: {ex.Message}");
+                    }
+                }));
+        }
+
+        return true;
+    }
+
     public bool InstallFailed => _installFailed;
     public WinKeyStateMachine Machine => _machine;
 
@@ -186,15 +346,22 @@ internal sealed class KeyboardHookService : IDisposable
             return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
         }
 
+        int message = unchecked((int)wParam.ToInt64());
+        int vk = Marshal.ReadInt32(lParam);
+
+        // Запись комбинации проверяем ДО паузы: она не должна глохнуть вместе с
+        // хуком, иначе нажатия уйдут системе и окно настроек потеряет фокус.
+        if (TryCapture(message, vk))
+        {
+            return (IntPtr)1;
+        }
+
         // Пауза (запись комбинации в настройках): не трогаем клавиатуру вообще,
         // иначе нажатие Alt/одиночного Win во время записи уводило окно в меню.
         if (IsPaused)
         {
             return NativeMethods.CallNextHookEx(self._hookHandle, nCode, wParam, lParam);
         }
-
-        int message = unchecked((int)wParam.ToInt64());
-        int vk = Marshal.ReadInt32(lParam);
         var decision = self._machine.Process(message, vk);
 
         if (self._verbose)

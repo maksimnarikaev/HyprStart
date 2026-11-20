@@ -117,6 +117,14 @@ public partial class SettingsWindow : Window
     private IDisposable? _hotkeyPause;
     private IDisposable? _hookPause;
 
+    /// <summary>Отложенная проверка после потери активации (см. OnDeactivated).</summary>
+    private DispatcherTimer? _captureRecheck;
+
+    /// Режим прямой записи в WH_KEYBOARD_LL: пока он активен, хук глушит
+    /// модификаторы и основную клавишу, поэтому Alt не открывает меню,
+    /// а окно настроек не теряет активацию.
+    private IDisposable? _captureScope;
+
     /// <summary>
     /// Идёт запись комбинации. Флаг держим сами и не завязываем на фокус:
     /// пока launcher-оверлей (Topmost) открыт поверх настроек, WM_SYSKEYDOWN
@@ -167,6 +175,17 @@ public partial class SettingsWindow : Window
     /// </summary>
     private void OnHotkeyMouseDown(object sender, MouseButtonEventArgs e)
     {
+        // Повторный клик по полю, где уже идёт запись, — отмена.
+        if (_isCapturingHotkey && HotkeyBox.IsKeyboardFocusWithin)
+        {
+            HotkeyBox.Content = _hotkey.Describe();
+            HotkeyBox.Foreground = (MediaBrush)FindResource("TextBrush");
+            AppLog.Write("settings: запись комбинации отменена повторным кликом");
+            EndHotkeyCapture();
+            e.Handled = true;
+            return;
+        }
+
         BeginHotkeyCapture();
 
         if (!HotkeyBox.IsKeyboardFocusWithin)
@@ -201,100 +220,105 @@ public partial class SettingsWindow : Window
         // сворачивало лаунчер вместо того, чтобы попасть в поле.
         _hotkeyPause ??= HotkeyService.Pause();
         _hookPause ??= KeyboardHookService.Pause();
-        AppLog.Write("settings: захват комбинации начат — глобальный хоткей и хук приостановлены");
-    }
-
-    protected override void OnSourceInitialized(EventArgs e)
-    {
-        base.OnSourceInitialized(e);
-
-        // Клавиши ловим на уровне потока, а не HWND: в PreviewKeyDown WPF не отдаёт
-        // Alt+<клавиша> (Alt уходит в системное меню), а хук конкретного HWND не видит
-        // сообщений, которые достались другому окну того же потока (оверлей Topmost).
-        ComponentDispatcher.ThreadPreprocessMessage += OnThreadPreprocessMessage;
+        _captureScope ??= KeyboardHookService.BeginCapture(OnHookCaptured);
+        AppLog.Write("settings: захват комбинации начат — глобальный хоткей снят, клавиши читает WH_KEYBOARD_LL");
     }
 
     protected override void OnClosed(EventArgs e)
     {
-        ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
         EndHotkeyCapture();
         base.OnClosed(e);
     }
 
     protected override void OnDeactivated(EventArgs e)
     {
-        // Ушли в другое приложение: запись прекращаем, иначе глобальный хоткей
-        // остался бы снятым с регистрации до самого закрытия настроек.
-        EndHotkeyCapture();
         base.OnDeactivated(e);
-    }
+        if (!_isCapturingHotkey) return;
 
-    private const int WmKeyDown = 0x0100;
-    private const int WmSysKeyDown = 0x0104;
-    private const int WmSysChar = 0x0106;
+        // Запись глушит клавиатуру всей системы, поэтому уход в другое окно её
+        // прекращает. Но не в момент нажатия Alt: модификатор — часть комбинации,
+        // и раньше именно здесь Alt+Q обрывался до второй клавиши.
+        RecheckCaptureAfterDeactivation();
+    }
 
     /// <summary>
-    /// Потоковый фильтр: пока идёт запись, нажатия потребляются здесь и не доходят
-    /// до окон потока. Поэтому Alt не открывает системное меню, Esc не закрывает
-    /// настройки, Enter их не сохраняет.
+    /// Отложенная проверка после потери активации: пока модификатор зажат, запись
+    /// продолжается (это начало комбинации); как только клавиши отпущены, а окно
+    /// так и не вернулось в фокус — запись прекращается.
     /// </summary>
-    private void OnThreadPreprocessMessage(ref MSG msg, ref bool handled)
+    private void RecheckCaptureAfterDeactivation()
     {
-        if (!_isCapturingHotkey || handled) return;
+        if (_captureRecheck is null)
+        {
+            _captureRecheck = new DispatcherTimer(
+                TimeSpan.FromMilliseconds(120),
+                DispatcherPriority.Background,
+                (_, _) => OnCaptureRecheckTick(),
+                Dispatcher);
+        }
 
-        int message = unchecked((int)msg.message);
-        if (message != WmKeyDown && message != WmSysKeyDown && message != WmSysChar) return;
-
-        handled = true;
-
-        // WM_SYSCHAR — это и есть «писк» и открытие меню по Alt; глотаем без разбора.
-        if (message == WmSysChar) return;
-
-        RecordHotkey(unchecked((int)msg.wParam.ToInt64()));
+        _captureRecheck.Start();
     }
 
-    private const int VkShift = 0x10;
-    private const int VkControl = 0x11;
-    private const int VkMenu = 0x12;
-    private const int VkLWin = 0x5B;
-    private const int VkRWin = 0x5C;
+    private void OnCaptureRecheckTick()
+    {
+        if (!_isCapturingHotkey || IsActive)
+        {
+            _captureRecheck?.Stop();
+            return;
+        }
+
+        // Модификатор всё ещё зажат — это набор комбинации, а не уход из окна.
+        if (CurrentModifiers() != 0) return;
+
+        _captureRecheck?.Stop();
+        AppLog.Write("settings: окно потеряло активацию — запись комбинации прекращена");
+        EndHotkeyCapture();
+    }
+
+    /// <summary>
+    /// Пришла основная клавиша из WH_KEYBOARD_LL. Модификаторы считает сам хук
+    /// по событиям, поэтому Alt+Q распознаётся уже на первом нажатии.
+    /// Возвращает true, если комбинация принята.
+    /// </summary>
+    private bool OnHookCaptured(uint mods, uint vk)
+    {
+        if (!_isCapturingHotkey) return false;
+        return RecordHotkey(mods, (int)vk);
+    }
+
+    private const int VkEscape = 0x1B;
 
     /// <summary>Разбирает нажатие в комбинацию и обновляет поле.</summary>
-    private void RecordHotkey(int vk)
+    private bool RecordHotkey(uint mods, int vk)
     {
-        // Сами модификаторы не считаем: ждём обычную клавишу вместе с ними.
-        if (vk is VkShift or VkControl or VkMenu or VkLWin or VkRWin)
-        {
-            AppLog.Write($"settings: модификатор vk=0x{vk:X2} — ждём основную клавишу");
-            return;
-        }
-
-        if (vk == 0x1B) // VK_ESCAPE — отмена записи, а не закрытие окна.
+        // Esc без модификаторов — отмена записи, а не закрытие окна.
+        if (vk == VkEscape && mods == 0)
         {
             HotkeyBox.Content = _hotkey.Describe();
+            HotkeyBox.Foreground = (MediaBrush)FindResource("TextBrush");
             AppLog.Write("settings: запись комбинации отменена по Esc");
             EndHotkeyCapture();
-            return;
+            return true;
         }
 
-        uint mods = 0;
-        if (IsDown(VkMenu)) mods |= HotkeySpec.ModAlt;
-        if (IsDown(VkControl)) mods |= HotkeySpec.ModControl;
-        if (IsDown(VkShift)) mods |= HotkeySpec.ModShift;
-        if (IsDown(VkLWin) || IsDown(VkRWin)) mods |= HotkeySpec.ModWin;
+        // Страховка на случай, если хук не успел отследить модификатор.
+        if (mods == 0) mods = CurrentModifiers();
+
+        AppLog.Write($"settings: нажата клавиша vk=0x{vk:X2} при модификаторах 0x{mods:X2}");
 
         // Глобальный хоткей без модификатора перехватил бы всю клавиатуру системы.
         if (mods == 0)
         {
             HotkeyBox.Content = Localizer.T("SettingsHotkeyNeedModifier");
-            return;
+            return false;
         }
 
         var built = HotkeySpec.FromKey(mods, (uint)vk);
         if (built is null)
         {
             HotkeyBox.Content = Localizer.T("SettingsHotkeyUnsupported");
-            return;
+            return false;
         }
 
         _hotkey = built.Value;
@@ -304,6 +328,20 @@ public partial class SettingsWindow : Window
 
         // Комбинация записана — запись закончена, глобальный хоткей возвращается.
         EndHotkeyCapture();
+        return true;
+    }
+
+    /// <summary>Физически зажатые модификаторы (страховка для RecordHotkey).</summary>
+    private static uint CurrentModifiers()
+    {
+        const int vkShift = 0x10, vkControl = 0x11, vkMenu = 0x12, vkLWin = 0x5B, vkRWin = 0x5C;
+
+        uint mods = 0;
+        if (IsDown(vkMenu)) mods |= HotkeySpec.ModAlt;
+        if (IsDown(vkControl)) mods |= HotkeySpec.ModControl;
+        if (IsDown(vkShift)) mods |= HotkeySpec.ModShift;
+        if (IsDown(vkLWin) || IsDown(vkRWin)) mods |= HotkeySpec.ModWin;
+        return mods;
     }
 
     [DllImport("user32.dll")]
@@ -317,10 +355,15 @@ public partial class SettingsWindow : Window
         bool wasCapturing = _isCapturingHotkey;
         _isCapturingHotkey = false;
 
+        _captureScope?.Dispose();
+        _captureScope = null;
+
         _hotkeyPause?.Dispose();
         _hotkeyPause = null;
         _hookPause?.Dispose();
         _hookPause = null;
+
+        _captureRecheck?.Stop();
 
         if (wasCapturing)
             AppLog.Write("settings: захват комбинации завершён — глобальный хоткей и хук возвращены");
