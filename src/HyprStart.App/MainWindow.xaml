@@ -1,0 +1,439 @@
+﻿<Window x:Class="HyprStart.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="HyprStart"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        FontFamily="{StaticResource MonoFont}"
+        FontSize="12.5"
+        TextOptions.TextFormattingMode="Display"
+        PreviewKeyDown="OnPreviewKeyDown"
+        PreviewTextInput="OnPreviewTextInput">
+
+    <Window.Resources>
+        <!-- Плитка закреплённого: папка с мини-сеткой или приложение -->
+        <DataTemplate x:Key="PinTileTemplate">
+            <Border Style="{StaticResource PinTileStyle}" ToolTip="{Binding Name}"
+                    Width="{Binding TileWidth}" Height="{Binding TileHeight}">
+                <Grid Background="Transparent">
+                    <Grid Visibility="{Binding FolderVisibility}" Background="Transparent">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ItemsControl ItemsSource="{Binding MiniIcons}" Margin="0,2,0,2" IsHitTestVisible="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Image Source="{Binding}" Margin="1"
+                                           Stretch="Uniform" MaxHeight="27"
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Grid.Row="1" Text="{Binding Name}" FontSize="10" TextAlignment="Center"
+                                   Margin="3,0,3,1" TextTrimming="CharacterEllipsis" IsHitTestVisible="False"
+                                   Foreground="{DynamicResource TextBrush}" />
+                    </Grid>
+
+                    <StackPanel Visibility="{Binding AppVisibility}" Background="Transparent"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Image Source="{Binding Icon}" Margin="0,6,0,3" Width="44" Height="44"
+                               Stretch="Uniform" HorizontalAlignment="Center" IsHitTestVisible="False"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                        <TextBlock Text="{Binding Name}" FontSize="10.5" TextWrapping="Wrap"
+                                   TextAlignment="Center" MaxHeight="24" TextTrimming="CharacterEllipsis"
+                                   IsHitTestVisible="False" Foreground="{DynamicResource TextBrush}" />
+                    </StackPanel>
+
+                    <!-- мини-индекс: Alt+1..9 запускает соответствующий пин -->
+                    <Border Visibility="{Binding IndexVisibility}"
+                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Margin="1,0,0,1" Padding="3,0"
+                            CornerRadius="4" IsHitTestVisible="False"
+                            Background="{DynamicResource MenuBrush}"
+                            BorderBrush="{DynamicResource PanelBorderGradient}"
+                            BorderThickness="1">
+                        <TextBlock Text="{Binding IndexBadge}" FontSize="8.5"
+                                   Foreground="{DynamicResource MutedBrush}" />
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Canvas x:Name="Root">
+
+        <!-- (б) приложения: дерево с папками -->
+        <HeaderedContentControl x:Name="PanelApps" Style="{StaticResource PanelStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border Background="Transparent"
+                        BorderBrush="{DynamicResource DividerBrush}"
+                        BorderThickness="0,0,0,1"
+                        Padding="0,0,0,7"
+                        Margin="0,0,0,4">
+                    <Grid>
+                        <TextBlock Text="&gt;" FontFamily="{StaticResource MonoFont}" FontSize="13"
+                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                        <TextBox x:Name="SearchBox" Style="{StaticResource SearchBoxStyle}"
+                                 Margin="18,0,0,0" TextChanged="OnSearchTextChanged" />
+                        <TextBlock x:Name="SearchPlaceholder" Text="поиск, папки, 2+2*2"
+                                   Margin="18,0,0,0" VerticalAlignment="Center"
+                                   FontFamily="{StaticResource MonoFont}" FontSize="13"
+                                   Foreground="{DynamicResource MutedBrush}" Opacity="0.75"
+                                   IsHitTestVisible="False" />
+                    </Grid>
+                </Border>
+
+                <ListBox x:Name="AppsList"
+                         Grid.Row="1"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0,0,4,0"
+                         ItemContainerStyle="{StaticResource AppItemStyle}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         VirtualizingStackPanel.IsVirtualizing="True"
+                         VirtualizingStackPanel.VirtualizationMode="Recycling">
+                    <ListBox.Resources>
+                        <Style TargetType="ScrollBar" BasedOn="{StaticResource DarkScrollBarStyle}" />
+                    </ListBox.Resources>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="{Binding IndentMargin}">
+                                <Grid Visibility="{Binding FolderVisibility}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Path Width="18" Height="15" Stretch="Uniform" Margin="0,0,5,0"
+                                          VerticalAlignment="Center" Data="{StaticResource FolderGlyph}">
+                                        <Path.Style>
+                                            <Style TargetType="Path">
+                                                <Setter Property="Fill" Value="{DynamicResource MutedBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                        <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Path.Style>
+                                    </Path>
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" />
+                                    <TextBlock Grid.Column="2" Text="{Binding CountText}" VerticalAlignment="Center"
+                                               FontSize="10.5" Foreground="{DynamicResource MutedBrush}" />
+                                </Grid>
+
+                                <Grid Visibility="{Binding AppVisibility}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Image Source="{Binding Icon}" Width="24" Height="24" Margin="16,0,8,0"
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Text="{Binding FolderHint}" VerticalAlignment="Center"
+                                               FontSize="10" Margin="8,0,0,0" Foreground="{DynamicResource MutedBrush}" />
+                                </Grid>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </HeaderedContentControl>
+
+        <!-- (а) закреплённое -->
+        <HeaderedContentControl x:Name="PanelPinned" Style="{StaticResource PanelStyle}">
+            <Grid>
+                <Grid x:Name="PinsRoot">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBox x:Name="RenameBox" Visibility="Collapsed"
+                             Style="{StaticResource SearchBoxStyle}"
+                             Margin="0,0,0,6"
+                             KeyDown="OnRenameKeyDown" LostFocus="OnRenameLostFocus" />
+
+                    <!-- ScrollBarVisibility=Hidden: колесо мыши прокручивает длинные папки,
+                         но системная светлая полоса не отъедает ширину и не ломает 5 колонок -->
+                    <ScrollViewer x:Name="PinsScroll" Grid.Row="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                        <!-- Сетка 5 колонок без фиксированных строк: число строк определяется
+                             числом пинов, VerticalAlignment="Top" убирает лишнее пустое место -->
+                        <ItemsControl x:Name="PinsList" ItemTemplate="{StaticResource PinTileTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="5" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <TextBlock x:Name="PinsHint" Grid.Row="1"
+                               Style="{StaticResource PlaceholderStyle}"
+                               Text="пусто · ПКМ по приложению в списке → «Закрепить», «+ Папка» в заголовке создаёт папку"
+                               VerticalAlignment="Top" />
+                </Grid>
+
+                <Grid x:Name="FolderRoot" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="‹ Назад" Style="{StaticResource QuickButtonStyle}" Click="OnFolderBack" />
+                        <TextBlock x:Name="FolderTitle" VerticalAlignment="Center" Margin="10,0,0,0"
+                                   FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+                    </StackPanel>
+
+                    <!-- Та же сетка 5xN, что и у корня: WrapPanel паковал плитки под ширину
+                         и давал 4 в ряд, ломая ритм с корневым блоком -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="FolderList" ItemTemplate="{StaticResource PinTileTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="5" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
+        </HeaderedContentControl>
+
+        <!-- (в) частое -->
+        <HeaderedContentControl x:Name="PanelFrequent" Style="{StaticResource PanelStyle}">
+            <Grid>
+                <ItemsControl x:Name="FrequentList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Image Source="{Binding Icon}" Width="20" Height="20" Margin="0,0,8,0"
+                                       RenderOptions.BitmapScalingMode="HighQuality" />
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="2" Text="{Binding CountText}" VerticalAlignment="Center"
+                                           FontSize="10.5" Foreground="{DynamicResource MutedBrush}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="FrequentHint" Style="{StaticResource PlaceholderStyle}"
+                           Text="здесь появятся приложения, которые ты запускаешь чаще всего" />
+            </Grid>
+        </HeaderedContentControl>
+
+        <!-- (г) быстрый доступ + плеер + визуализатор -->
+        <HeaderedContentControl x:Name="PanelQuick" Style="{StaticResource PanelStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <UniformGrid Columns="2">
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="⤓ Загрузки" Click="OnQuickDownloads" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="🗀 Проводник" Click="OnQuickExplorer" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="⚙ Параметры" Click="OnQuickSettings" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="&gt;_ Терминал" Click="OnQuickTerminal" />
+                    </UniformGrid>
+
+                    <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Margin="0,2,0,6" />
+
+                    <TextBlock Text="ПИТАНИЕ" Style="{StaticResource SectionHeaderStyle}" Margin="2,0,0,4" />
+                    <UniformGrid Columns="3">
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="Сон" Click="OnSleep" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="Перезагрузка" Click="OnRestart" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="Выключение" Click="OnShutdown" />
+                    </UniformGrid>
+
+                    <Border x:Name="PowerConfirm" Visibility="Collapsed" Margin="0,10,0,0"
+                            Background="{DynamicResource MenuBrush}" BorderBrush="{DynamicResource PanelBorderGradient}"
+                            BorderThickness="1" CornerRadius="8" Padding="10,8">
+                        <StackPanel>
+                            <TextBlock x:Name="PowerConfirmText" Text="Выключить компьютер?" FontSize="11.5"
+                                       Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Да" Style="{StaticResource QuickButtonStyle}" Click="OnPowerConfirm" />
+                                <Button Content="Отмена" Style="{StaticResource QuickButtonStyle}" Click="OnPowerCancel" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- плеер сверху: название трека и транспорт над высокими столбиками -->
+                <Grid Grid.Row="1" Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock x:Name="QuickTrack" Grid.Column="0" Text="▶ —" FontSize="11"
+                               Margin="2,0,6,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" />
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Style="{StaticResource QuickGlyphButtonStyle}" Content="&#xE892;"
+                                FontFamily="Segoe MDL2 Assets" FontSize="12" Click="OnMediaPrev" />
+                        <Button Style="{StaticResource QuickGlyphButtonStyle}" Content="&#xE768;"
+                                FontFamily="Segoe MDL2 Assets" FontSize="12" Click="OnMediaPlayPause" />
+                        <Button Style="{StaticResource QuickGlyphButtonStyle}" Content="&#xE893;"
+                                FontFamily="Segoe MDL2 Assets" FontSize="12" Click="OnMediaNext" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- cava: остаток высоты карточки отдан эквалайзеру -->
+                <Border Grid.Row="2" Margin="0,6,0,0" MinHeight="64"
+                        Background="#1AFFFFFF" CornerRadius="6" Padding="4,4,4,0">
+                    <UniformGrid x:Name="MeterBars" Columns="30" VerticalAlignment="Stretch" />
+                </Border>
+            </Grid>
+        </HeaderedContentControl>
+
+        <!-- polybar: отдельные «парящие» островки-капсулы с зазорами -->
+        <Grid x:Name="Polybar" Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- левый островок: телеметрия -->
+            <Grid Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <Border Style="{StaticResource IslandShadowStyle}" />
+                <Border x:Name="PolybarFrame" Style="{StaticResource IslandStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <Border x:Name="PillRamHost" Style="{StaticResource PillStyle}" Cursor="Hand">
+                            <TextBlock x:Name="PillRam" Style="{StaticResource PillTextStyle}" Text="RAM ---%" />
+                        </Border>
+                        <Border x:Name="PillCpuHost" Style="{StaticResource PillStyle}" Cursor="Hand">
+                            <TextBlock x:Name="PillCpu" Style="{StaticResource PillTextStyle}" Text="CPU ---%" />
+                        </Border>
+                        <Border x:Name="PillVolHost" Style="{StaticResource PillStyle}" Cursor="Hand" Margin="0">
+                            <TextBlock x:Name="PillVol" Style="{StaticResource PillTextStyle}" Text="VOL ---" />
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- подсказки клавиш: отдельная капсула по центру -->
+            <Grid Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0">
+                <Border Style="{StaticResource IslandShadowStyle}" />
+                <Border Style="{StaticResource IslandStyle}" Padding="12,3">
+                    <TextBlock Style="{StaticResource PillTextStyle}" Foreground="{DynamicResource MutedBrush}"
+                               Text="↑↓ выбор · Enter запуск · Alt+1..9 пины · ПКМ закрепить · F5 обновить · Esc закрыть" />
+                </Border>
+            </Grid>
+
+            <!-- правый островок: тема и часы -->
+            <Grid Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Border Style="{StaticResource IslandShadowStyle}" />
+                <Border Style="{StaticResource IslandStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <Border x:Name="ThemePill" Style="{StaticResource PillStyle}" Cursor="Hand"
+                                ToolTip="Переключить тему (клик)">
+                            <TextBlock x:Name="ThemePillText" Style="{StaticResource PillTextStyle}" Text="тема" />
+                        </Border>
+                        <Border Style="{StaticResource PillStyle}" Margin="0">
+                            <TextBlock x:Name="PillClock" Style="{StaticResource PillTextStyle}" Text="--:--:--" />
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- (д) мини-чат MINI AI: правая половина верхней правой ячейки -->
+        <HeaderedContentControl x:Name="PanelChat" Style="{StaticResource PanelStyle}">
+            <HeaderedContentControl.Tag>
+                <!-- кнопка очистки контекста в шапке карточки -->
+                <Button Content="Очистить" Style="{StaticResource QuickButtonStyle}"
+                        FontSize="11" Margin="0" Padding="10,3"
+                        ToolTip="Очистить чат (Ctrl+L)"
+                        Click="OnChatClear" />
+            </HeaderedContentControl.Tag>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- лента сообщений с автопрокруткой; полоса прокрутки скрыта: колесо мыши
+                     и автопрокрутка при стриминге работают, но системный скроллбар не рисуется -->
+                <ScrollViewer x:Name="ChatScroll" VerticalScrollBarVisibility="Hidden"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="ChatMessages">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,4" Padding="6,4" CornerRadius="6"
+                                        Background="{Binding BubbleBrush}"
+                                        BorderBrush="{Binding BubbleBorderBrush}" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding RoleLabel}" FontSize="9.5"
+                                                   Foreground="{DynamicResource MutedBrush}" />
+                                        <!-- TextBox, а не TextBlock: текст ответа можно выделить мышью и скопировать (Ctrl+C) -->
+                                        <TextBox Text="{Binding Text}" IsReadOnly="True" BorderThickness="0"
+                                                 Background="Transparent" TextWrapping="Wrap" FontSize="11.5"
+                                                 Padding="0" IsTabStop="False"
+                                                 Foreground="{DynamicResource TextBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <TextBlock x:Name="ChatHint" Text="спроси ИИ · Tab — фокус, Enter — отправить"
+                           Style="{StaticResource PlaceholderStyle}" FontSize="10.5"
+                           VerticalAlignment="Top" IsHitTestVisible="False" />
+
+                <!-- поле ввода -->
+                <Border Grid.Row="1" Margin="0,6,0,0" Padding="7,5" CornerRadius="7"
+                        Background="{DynamicResource TileBrush}"
+                        BorderBrush="{DynamicResource TileBorderBrush}" BorderThickness="1"
+                        x:Name="ChatInputFrame">
+                    <Grid>
+                        <TextBox x:Name="ChatInput" Style="{StaticResource SearchBoxStyle}"
+                                 FontSize="11.5" AcceptsReturn="True" TextWrapping="Wrap"
+                                 MaxHeight="54" VerticalScrollBarVisibility="Auto"
+                                 PreviewKeyDown="OnChatInputPreviewKeyDown" TextChanged="OnChatInputTextChanged" />
+                        <TextBlock x:Name="ChatPlaceholder" IsHitTestVisible="False"
+                                   Style="{StaticResource PlaceholderStyle}" FontSize="10.5"
+                                   Margin="0,1,0,0" VerticalAlignment="Center"
+                                   Text="Спросить ИИ…" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </HeaderedContentControl>
+
+    </Canvas>
+</Window>

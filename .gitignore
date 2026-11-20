@@ -1,0 +1,32 @@
+# Сборка .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+publish/
+.tmp/
+.tmp-publish/
+.tmp*/*
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Артефакты сборки и тестов
+*.dll
+*.pdb
+*.exe.config
+TestResults/
+coverage*.xml
+*.trx
+
+# Временное и копии
+*.log
+*.bak
+*.bak*
+*.orig
+*~
+
+# Локальные данные приложения
+settings.json
+logs/

@@ -1,0 +1,20 @@
+{
+  "name": "Sakura pink",
+  "glass": "#D918121E",
+  "divider": "#33C792EA",
+  "accent": "#FF75B5",
+  "accent2": "#C792EA",
+  "text": "#F4B8E4",
+  "muted": "#B78BB0",
+  "pill": "#6618121E",
+  "pillBorder": "#40FF75B5",
+  "borderFrom": "#FF75B5",
+  "borderTo": "#C792EA",
+  "tile": "#4018121E",
+  "tileBorder": "#66FF75B5",
+  "hover": "#5A231A2C",
+  "selection": "#2AFF75B5",
+  "menu": "#F218121E",
+  "cavaFrom": "#FF75B5",
+  "cavaTo": "#C792EA"
+}
