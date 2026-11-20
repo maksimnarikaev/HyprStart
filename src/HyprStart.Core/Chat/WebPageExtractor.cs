@@ -21,6 +21,10 @@ public static class WebPageExtractor
     /// </summary>
     private const int MinHeadingChars = 12;
 
+    /// <summary>Нижняя граница для коротких фактических блоков: «Курс 92,4 ₽» — факт,
+    /// хотя до обычного порога абзаца не дотягивает.</summary>
+    private const int MinFactualChars = 18;
+
     /// <summary>Сколько фрагментов максимум склеиваем: больше всё равно не влезет в промпт.</summary>
     private const int MaxFragments = 40;
 
@@ -88,6 +92,11 @@ public static class WebPageExtractor
     {
         if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
 
+        // Нормализуем переводы строк до любой обработки: разбор идёт по разделителю
+        // "\n\n", и на CRLF-входе (Windows, часть сайтов) блоки не разделялись бы
+        // вовсе — дедупликация и пороги длины молча переставали работать.
+        raw = raw.Replace("\r\n", "\n").Replace('\r', '\n');
+
         string markdown = StripHtmlMarkup(raw);
         var fragments = new List<string>();
         int total = 0;
@@ -120,9 +129,17 @@ public static class WebPageExtractor
             // поэтому для него порог длины ниже, чем для обычного абзаца.
             bool looksLikeHeading = IsHeading(block);
             int threshold = looksLikeHeading ? MinHeadingChars : MinFragmentChars;
-            if (candidate.Length < threshold) continue;
 
-            candidates.Add((candidate, looksLikeHeading, FactScore(candidate), threshold));
+            // Короткий, но содержательный блок («Данные ЦБ РФ на 19 ноября 2026 года» —
+            // 34 символа) не должен отсекаться порогом длины: порог существует, чтобы
+            // не пускать в промпт обрывки меню, а пункты меню уже отсеяны IsLinkHeavy.
+            // Блок с признаками факта (дата/значение/валюта) берём, если он не короче
+            // абсолютного минимума осмысленности.
+            int score = FactScore(candidate);
+            int effectiveThreshold = score > 0 ? Math.Min(threshold, MinFactualChars) : threshold;
+            if (candidate.Length < effectiveThreshold) continue;
+
+            candidates.Add((candidate, looksLikeHeading, score, effectiveThreshold));
         }
 
         // Второй проход — укладка в бюджет. Сначала идут блоки с признаками факта

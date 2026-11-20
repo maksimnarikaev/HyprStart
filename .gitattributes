@@ -1,0 +1,19 @@
+# Единые окончания строк: в репозитории и в CI — LF.
+# Иначе checkout на windows-latest получает CRLF, а тесты сравнивают литералы
+# из исходников: поведение расходится с локальной машиной (WebPageExtractorTests).
+* text=auto eol=lf
+
+# Скрипты PowerShell на Windows должны оставаться CRLF: старые версии
+# PowerShell 5.1 некорректно разбирают .ps1 с LF.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Бинарные файлы не трогаем.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.bundle binary

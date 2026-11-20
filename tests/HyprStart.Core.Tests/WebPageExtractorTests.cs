@@ -86,6 +86,29 @@ public class WebPageExtractorTests
         Assert.Equal(first, extracted.LastIndexOf("92,4", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Регресс: на CRLF-входе разделитель блоков "\n\n" не срабатывал, блоки сливались
+    /// в один, и дедупликация молча выключалась — дубликат абзаца съедал бюджет промпта.
+    /// Windows-раннер GitHub Actions разворачивал исходники с CRLF, и тест падал только в CI.
+    /// </summary>
+    [Fact]
+    public void Extract_TreatsCrlfSameAsLf()
+    {
+        const string paragraph =
+            "Официальный курс доллара на сегодня составляет 92,4 рубля по данным ЦБ.";
+
+        string lf = paragraph + "\n\n" + paragraph;
+        string crlf = paragraph + "\r\n\r\n" + paragraph;
+
+        Assert.Equal(WebPageExtractor.Extract(lf), WebPageExtractor.Extract(crlf));
+
+        // И дедупликация действительно работает, а не просто «оба варианта одинаково плохи».
+        string extracted = WebPageExtractor.Extract(crlf);
+        int first = extracted.IndexOf("92,4", StringComparison.Ordinal);
+        Assert.True(first >= 0);
+        Assert.Equal(first, extracted.LastIndexOf("92,4", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Extract_HonoursMaxChars()
     {

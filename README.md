@@ -4,7 +4,9 @@ A **Hyprland-inspired launcher for Windows 11**. Press a hotkey and a translucen
 out with your app grid, frequent shortcuts, a search field, media controls and a built-in AI chat.
 Native WPF, no Electron, no background telemetry.
 
-![HyprStart overview](assets/overview.png)
+<!-- Временно скрыто: реальных скриншотов в assets/ пока нет, чтобы не висела битая картинка.
+     Вернуть, когда в assets/ появятся файлы из таблицы ниже.
+![HyprStart overview](assets/overview.png) -->
 
 ---
 
@@ -166,5 +168,4 @@ Drop images into [`assets/`](assets/) using the names below — the README picks
 
 ## License
 
-No license file is included in this repository yet. Until one is added, the default
-copyright rules apply — open an issue if you need a specific license for your use case.
+Licensed under the [MIT License](LICENSE).

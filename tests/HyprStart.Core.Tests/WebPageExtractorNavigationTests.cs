@@ -13,21 +13,23 @@ public class WebPageExtractorNavigationTests
     /// <summary>Шапка: длинное меню ссылками, затем заголовок и факты.</summary>
     private static string BuildPageWithHeavyMenu()
     {
+        // Явный \n вместо AppendLine: Environment.NewLine на Windows даёт CRLF, и тест
+        // зависел бы от платформы — именно так он и расходился локально и в CI.
         var menu = new System.Text.StringBuilder();
-        menu.AppendLine("Title: Курс доллара");
-        menu.AppendLine();
+        menu.Append("Title: Курс доллара\n");
+        menu.Append("\n");
         for (int i = 0; i < 40; i++)
         {
-            menu.AppendLine($"*   [Пункт меню номер {i} с длинным текстом](https://site.ru/menu/{i}) " +
-                            "[Ещё один пункт](https://site.ru/extra/" + i + ")");
-            menu.AppendLine();
+            menu.Append($"*   [Пункт меню номер {i} с длинным текстом](https://site.ru/menu/{i}) " +
+                        $"[Ещё один пункт](https://site.ru/extra/{i})\n");
+            menu.Append("\n");
         }
 
-        menu.AppendLine("# Курс доллара США к рублю");
-        menu.AppendLine();
-        menu.AppendLine("Сегодня 1 USD = 82,01 RUB, динамика за месяц -1,45 RUB.");
-        menu.AppendLine();
-        menu.AppendLine("Данные ЦБ РФ на 19 ноября 2026 года.");
+        menu.Append("# Курс доллара США к рублю\n");
+        menu.Append("\n");
+        menu.Append("Сегодня 1 USD = 82,01 RUB, динамика за месяц -1,45 RUB.\n");
+        menu.Append("\n");
+        menu.Append("Данные ЦБ РФ на 19 ноября 2026 года.\n");
         return menu.ToString();
     }
 
