@@ -1,6 +1,7 @@
-﻿using System.IO;
+using System.IO;
 using System.Text.Json;
 using HyprStart.Core.Library;
+using HyprStart.Core.Settings;
 using HyprStart.Core.Storage;
 
 namespace HyprStart.App.Services;
@@ -174,6 +175,53 @@ public sealed class PinsStore
         folder.Children.Add(child);
         Save();
         AppLog.Write($"pins: '{child.Name}' -> папка '{folder.Name}'");
+    }
+
+    /// <summary>
+    /// Первичный сидинг панели «Закреплено» на чистом ПК: кладём то, что реально
+    /// установлено, чтобы новый пользователь не смотрел на пустую панель.
+    /// Вызывается один раз - когда индекса меню «Пуск» ещё нет и файла pins.json тоже.
+    /// </summary>
+    /// <returns>Сколько пинов создано.</returns>
+    public int SeedDefaults(IEnumerable<DefaultPins.InstalledApp> installed)
+    {
+        if (_data.Items.Count > 0) return 0;
+
+        // Битые ярлыки отбрасываем здесь: пины должны запускаться, а не просто висеть иконками.
+        var usable = (installed ?? Enumerable.Empty<DefaultPins.InstalledApp>())
+            .Where(app => DefaultPins.IsUsableShortcut(app.Target))
+            .ToList();
+
+        var seeded = DefaultPins.BuildFrom(usable);
+        if (seeded.Count == 0)
+        {
+            AppLog.Write("pins: подходящих приложений не найдено, панель остаётся пустой");
+            return 0;
+        }
+
+        _data.Items.AddRange(seeded);
+        Save();
+        AppLog.Write($"pins: первичный сидинг - {seeded.Count} шт. ({string.Join(", ", seeded.Select(i => i.Name))})");
+        return seeded.Count;
+    }
+
+    /// <summary>Дополнить пины интересным приложением (из окна настроек), если его там ещё нет.</summary>
+    public bool AddInstalled(DefaultPins.InstalledApp app)
+    {
+        if (app is null || string.IsNullOrWhiteSpace(app.Target)) return false;
+        if (!DefaultPins.IsUsableShortcut(app.Target)) return false;
+        if (_data.Items.Any(i => i.SameAs(app.Target, app.Kind))) return false;
+
+        _data.Items.Add(new PinnedItem
+        {
+            Name = app.Name,
+            Target = app.Target,
+            Kind = app.Kind,
+            Group = app.Group,
+        });
+
+        Save();
+        return true;
     }
 
     private void Load()

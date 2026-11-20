@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Threading;
 using HyprStart.App.Interop;
 using HyprStart.App.Services;
@@ -63,6 +63,14 @@ public partial class App : System.Windows.Application
         }
 
         _settings = SettingsStore.Load();
+
+        // Переносимость: на чужом ПК в settings.json нет ни координат, ни города.
+        // Определяем их по IP один раз и кэшируем в настройки (офлайн - просто пропускаем).
+        if (!headless) LocationBootstrapper.EnsureLocation(_settings);
+
+        // Стартовые пины строим из РЕАЛЬНО установленных программ: жёсткий список
+        // ярлыков на чужой машине дал бы битые ссылки.
+        if (!headless) Bootstrapper.SeedPins(_pins, _settings);
         _themes = new ThemeService(_settings.Current.Theme);
         if (!headless) ConfigureAutostartOnFirstRun();
         RefreshAutostartPath();

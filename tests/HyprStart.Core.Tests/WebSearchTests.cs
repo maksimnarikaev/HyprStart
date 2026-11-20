@@ -1,4 +1,5 @@
-﻿using HyprStart.Core.Chat;
+using System.Globalization;
+using HyprStart.Core.Chat;
 using Xunit;
 
 namespace HyprStart.Core.Tests;
@@ -102,9 +103,39 @@ public class WebSearchTests
     public void WeatherUrl_PointsToOpenMeteoWithCurrentFields()
     {
         Assert.StartsWith("https://api.open-meteo.com/v1/forecast?", WebSearch.WeatherUrl);
-        Assert.Contains("latitude=43.02", WebSearch.WeatherUrl);
-        Assert.Contains("longitude=44.68", WebSearch.WeatherUrl);
         Assert.Contains("current=temperature_2m,apparent_temperature,wind_speed_10m", WebSearch.WeatherUrl);
+    }
+
+    [Fact]
+    public void WeatherUrl_DefaultIsNeutral_NotTiedToAuthorsCity()
+    {
+        // Портативность: дефолт не должен быть координатами Владикавказа (43.02, 44.68).
+        Assert.DoesNotContain("latitude=43.02", WebSearch.WeatherUrl);
+        Assert.DoesNotContain("longitude=44.68", WebSearch.WeatherUrl);
+        Assert.Contains("latitude=" + WebSearch.DefaultWeatherLatitude.ToString(CultureInfo.InvariantCulture), WebSearch.WeatherUrl);
+        Assert.Contains("longitude=" + WebSearch.DefaultWeatherLongitude.ToString(CultureInfo.InvariantCulture), WebSearch.WeatherUrl);
+    }
+
+    [Theory]
+    [InlineData(55.7887, 49.1221)]
+    [InlineData(-33.8688, 151.2093)]
+    [InlineData(59.9343, 30.3351)]
+    public void WeatherUrlFor_UsesConfiguredCoordinates(double latitude, double longitude)
+    {
+        string url = WebSearch.WeatherUrlFor(latitude, longitude);
+
+        Assert.Contains("latitude=" + latitude.ToString(CultureInfo.InvariantCulture), url);
+        Assert.Contains("longitude=" + longitude.ToString(CultureInfo.InvariantCulture), url);
+    }
+
+    [Fact]
+    public void WeatherUrlFor_UsesInvariantCultureDecimalPoint()
+    {
+        // Иначе в русской локали в URL уехала бы запятая вместо точки.
+        string url = WebSearch.WeatherUrlFor(55.5, 37.25);
+
+        Assert.Contains("latitude=55.5", url);
+        Assert.Contains("longitude=37.25", url);
     }
 
     [Fact]

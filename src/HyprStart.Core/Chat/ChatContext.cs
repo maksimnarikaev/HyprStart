@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 
 namespace HyprStart.Core.Chat;
 
@@ -8,8 +8,12 @@ namespace HyprStart.Core.Chat;
 /// </summary>
 public static class ChatContext
 {
-    /// <summary>Город пользователя по умолчанию (Владикавказ).</summary>
-    public const string DefaultCity = "Владикавказ";
+    /// <summary>
+    /// Город по умолчанию - только запасной вариант, когда настройки ещё не прочитаны.
+    /// Реальный город приходит из <c>settings.Weather</c> (геолокация по IP или ручной
+    /// ввод), поэтому ни один город не зашит в код жёстко.
+    /// </summary>
+    public const string DefaultCity = "Москва";
 
     /// <summary>Команда погоды: <c>/weather</c> или <c>/погода</c> в начале сообщения.</summary>
     public static bool IsWeatherRequest(string? text)

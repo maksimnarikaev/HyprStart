@@ -1,4 +1,4 @@
-﻿namespace HyprStart.Core.Layout;
+namespace HyprStart.Core.Layout;
 
 /// <summary>
 /// Геометрия оверлея. Считается по ПОЛНОМУ размеру экрана (Screen.Bounds), а не по WorkingArea:
@@ -78,7 +78,7 @@ public static class LayoutCalculator
 
         // Верхнюю правую ячейку делим пополам: слева закреплённое, справа мини-чат.
         // Делим по тому же gap, что и между остальными карточками, чтобы сетка была ровной.
-        double pinnedWidth = Round((rightWidth - gap) / 2.0);
+        double pinnedWidth = Math.Max(0, Round((rightWidth - gap) / 2.0));
         pinnedWidth = Math.Min(pinnedWidth, Math.Max(0, rightWidth - gap));
         double chatWidth = Math.Max(0, rightWidth - pinnedWidth - gap);
         double chatX = rightX + pinnedWidth + gap;

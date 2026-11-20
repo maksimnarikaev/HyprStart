@@ -1,10 +1,11 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http;
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using HyprStart.Core.Settings;
 
 namespace HyprStart.Core.Chat;
 
@@ -14,7 +15,7 @@ namespace HyprStart.Core.Chat;
 /// </summary>
 public sealed record QuickChatOptions
 {
-    public const string Endpoint = "https://api.deepseek.com/chat/completions";
+    public const string Endpoint = ChatEndpoint.DefaultBaseUrl + ChatEndpoint.CompletionsPath;
     public const string DefaultModel = "deepseek-chat";
     public const string EnvKeyName = "DEEPSEEK_API_KEY";
 
@@ -26,7 +27,12 @@ public sealed record QuickChatOptions
 
     public string ApiKey { get; init; } = string.Empty;
     public string Model { get; init; } = DefaultModel;
-    public string Url { get; init; } = Endpoint;
+
+    /// <summary>Base URL провайдера (OpenAI-совместимый). Пусто - дефолт DeepSeek.</summary>
+    public string BaseUrl { get; init; } = string.Empty;
+    /// <summary>Полный адрес Chat Completions. Собирается из Base URL настроек.</summary>
+    /// <summary>Полный адрес запроса: собирается из <see cref="BaseUrl"/> по правилам OpenAI API.</summary>
+    public string Url => ChatEndpoint.BuildUrl(BaseUrl);
 
     /// <summary>
     /// Явный прокси из settings.json (<c>chatProxy</c>), например <c>http://127.0.0.1:7890</c>.
@@ -37,11 +43,8 @@ public sealed record QuickChatOptions
     /// <summary>Разрешает ключ: настройки → переменная окружения. Пустая строка, если ключа нет.</summary>
     public static string ResolveApiKey(string? fromSettings, Func<string, string?>? readEnv = null)
     {
-        if (!string.IsNullOrWhiteSpace(fromSettings)) return fromSettings.Trim();
-
-        var env = readEnv ?? Environment.GetEnvironmentVariable;
-        var value = env(EnvKeyName);
-        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+        // Единая логика в ChatEndpoint: её же использует окно настроек для подсказки «ключ не задан».
+        return ChatEndpoint.ResolveApiKey(fromSettings, readEnv);
     }
 }
 

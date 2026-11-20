@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -15,6 +15,7 @@ using HyprStart.Core.Chat;
 using HyprStart.Core.Input;
 using HyprStart.Core.Library;
 using HyprStart.Core.Layout;
+using HyprStart.Core.Settings;
 using WinForms = System.Windows.Forms;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaColor = System.Windows.Media.Color;
@@ -184,6 +185,12 @@ public sealed class ChatLineVm : System.ComponentModel.INotifyPropertyChanged
 
     public ChatRole Role { get; }
 
+    /// <summary>
+    /// true у служебной подсказки "MINI AI не настроен": такие строки снимаются,
+    /// как только пользователь задал ключ в настройках.
+    /// </summary>
+    public bool IsSetupHint { get; set; }
+
     public bool IsNotice
     {
         get => _isNotice;
@@ -273,6 +280,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _tickTimer;
     private readonly DispatcherTimer _meterTimer;
     private bool _awake;
+    private SettingsWindow? _settingsWindow;
     private HotkeyService? _hotkey;
     private LayoutResult? _lastLayout;
     private IntPtr _hwnd = IntPtr.Zero;
@@ -1863,6 +1871,67 @@ public partial class MainWindow : Window
         }));
     }
 
+    // ---------- окно настроек ----------
+
+    /// <summary>
+    /// Открывает компактное окно настроек. Второй Ctrl+, просто поднимает уже
+    /// открытое окно: два экземпляра правили бы один settings.json наперегонки.
+    /// </summary>
+    private void OnOpenSettings(object sender, RoutedEventArgs e) => OpenSettings();
+
+    private void OpenSettings()
+    {
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        var window = new SettingsWindow(_settings, _themes) { Owner = this };
+        window.Saved += OnSettingsSaved;
+        window.Closed += (_, _) =>
+        {
+            _settingsWindow = null;
+            SearchBox.Focus();
+        };
+
+        _settingsWindow = window;
+        window.Show();
+    }
+
+    /// <summary>
+    /// Применяет сохранённые настройки: глобальный хоткей, видимость панели MINI AI
+    /// и подсказку в чате, если ключ так и не задали.
+    /// </summary>
+    private void OnSettingsSaved()
+    {
+        ApplyHotkey();
+        ApplyChatVisibility();
+        UpdateChatSetupHint();
+
+        AppLog.Write(
+            $"settings: применены (hotkey={HotkeyName}, чат скрыт={_settings.Current.HideChatPanel}, " +
+            $"base={_settings.Current.ChatBaseUrl}, model={_settings.Current.ChatModel})");
+    }
+
+    /// <summary>Перерегистрирует глобальный хоткей по текущим настройкам.</summary>
+    private void ApplyHotkey()
+    {
+        if (_hotkey is null) return;
+
+        var spec = HotkeySpec.TryParse(_settings.Current.Hotkey, out var parsed) ? parsed : HotkeySpec.AltSpace;
+        bool ok = _hotkey.Apply(spec);
+        AppLog.Write(ok
+            ? $"hotkey: зарегистрирован {spec.Describe()}"
+            : $"hotkey: {spec.Describe()} занят другим приложением");
+    }
+
+    /// <summary>Скрывает карточку MINI AI, если так решили в настройках.</summary>
+    private void ApplyChatVisibility()
+    {
+        PanelChat.Visibility = _settings.Current.HideChatPanel ? Visibility.Collapsed : Visibility.Visible;
+    }
+
     private void ApplyFilterFromSearch()
     {
         UpdatePlaceholder();
@@ -1900,6 +1969,15 @@ public partial class MainWindow : Window
 
             return;
         }
+
+        // Ctrl+, - окно настроек (стандарт для приложений); работает из любого поля окна.
+        if (e.Key == Key.OemComma && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            OpenSettings();
+            return;
+        }
+
 
         // Alt+1..9 / Ctrl+1..9 — запуск закреплённого по номеру плитки
         if (TryActivatePinnedByDigit(e)) return;
@@ -2482,7 +2560,8 @@ public partial class MainWindow : Window
         var options = new QuickChatOptions
         {
             ApiKey = QuickChatOptions.ResolveApiKey(settings.ChatApiKey),
-            Model = string.IsNullOrWhiteSpace(settings.ChatModel) ? QuickChatOptions.DefaultModel : settings.ChatModel,
+            Model = string.IsNullOrWhiteSpace(settings.ChatModel) ? ChatEndpoint.DefaultModel : settings.ChatModel,
+            BaseUrl = settings.ChatBaseUrl,
             ProxyUrl = settings.ChatProxy ?? string.Empty,
         };
 
@@ -2494,14 +2573,46 @@ public partial class MainWindow : Window
         ChatMessages.ItemsSource = _chatLines;
         UpdateChatPlaceholder();
 
-        // Чат стартует чистым: лента пуста, подсказку «спроси ИИ…» рисует XAML.
-        // Сообщение показываем только если работать нечем — без ключа.
-        if (string.IsNullOrWhiteSpace(QuickChatOptions.ResolveApiKey(_settings.Current.ChatApiKey)))
+        // Чат стартует чистым: лента пуста, подсказку <спроси ИИ:> рисует XAML.
+        // Если ключа нет - мягкая подсказка вместо будущей ошибки запроса.
+        UpdateChatSetupHint();
+    }
+
+    /// <summary>
+    /// Подсказка в чате вместо красной ошибки: без ключа панель MINI AI бесполезна,
+    /// но пользователь должен видеть, ЧТО именно поправить (Base URL / Key / Model).
+    /// </summary>
+    private void UpdateChatSetupHint()
+    {
+        bool configured = ChatEndpoint.IsConfigured(_settings.Current.ChatApiKey);
+
+        if (configured)
         {
-            AppendChatLine(ChatRole.System,
-                $"Нет ключа. Задай переменную окружения {QuickChatOptions.EnvKeyName} " +
-                "или chatApiKey в settings.json и перезапусти.", notice: true);
+            // Ключ появился: старую подсказку убираем, чтобы не пугала.
+            for (int i = _chatLines.Count - 1; i >= 0; i--)
+            {
+                if (_chatLines[i].IsSetupHint) _chatLines.RemoveAt(i);
+            }
+
+            return;
         }
+
+        foreach (var line in _chatLines)
+        {
+            if (line.IsSetupHint) return;
+        }
+
+        var hint = new ChatLineVm(
+            ChatRole.System,
+            "MINI AI пока не настроен: нажмите шестерёнку или Ctrl+, и укажите Base URL, API Key и Model " +
+            "(подойдёт DeepSeek, OpenAI, OpenRouter, Groq или локальная Ollama). " +
+            "Вместо ключа можно задать переменную окружения " + ChatEndpoint.EnvKeyName + ".",
+            isNotice: true);
+        hint.IsSetupHint = true;
+
+        _chatLines.Add(hint);
+        ChatHint.Visibility = Visibility.Collapsed;
+        ScrollChatToEnd();
     }
 
     private void UpdateChatPlaceholder()
@@ -2604,8 +2715,11 @@ public partial class MainWindow : Window
         var client = CreateChatClient();
         if (!client.HasApiKey)
         {
+            // Не тупик, а приглашение настроить: открываем окно настроек сразу.
             AppendChatLine(ChatRole.System,
-                $"Нет ключа: задай {QuickChatOptions.EnvKeyName} или chatApiKey в settings.json.", notice: true);
+                "Без ключа отправить не получится - открываю настройки MINI AI.", notice: true);
+            UpdateChatSetupHint();
+            OpenSettings();
             return;
         }
 

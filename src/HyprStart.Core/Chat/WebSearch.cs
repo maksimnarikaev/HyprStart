@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -53,16 +53,20 @@ public static class WebSearch
     public static readonly TimeSpan TotalTimeout = TimeSpan.FromSeconds(12);
 
     /// <summary>
-    /// Погодные города по умолчанию (Владикавказ) для Open-Meteo: API ждёт координаты.
+    /// Координаты, если геолокация недоступна и пользователь ничего не задал:
+    /// центр европейской части РФ, чтобы погода не приезжала из другого полушария.
     /// </summary>
-    public const double WeatherLatitude = 43.02;
+    public const double DefaultWeatherLatitude = 55.7558;
 
-    public const double WeatherLongitude = 44.68;
+    public const double DefaultWeatherLongitude = 37.6173;
 
     /// <summary>Бесплатный JSON-API погоды: без ключа, без капчи, работает поверх VPN.</summary>
-    public static string WeatherUrl =>
-        $"https://api.open-meteo.com/v1/forecast?latitude={WeatherLatitude.ToString(CultureInfo.InvariantCulture)}" +
-        $"&longitude={WeatherLongitude.ToString(CultureInfo.InvariantCulture)}" +
+    public static string WeatherUrl => WeatherUrlFor(DefaultWeatherLatitude, DefaultWeatherLongitude);
+
+    /// <summary>Адрес погоды для точки из настроек: Open-Meteo ждёт координаты, а не имя города.</summary>
+    public static string WeatherUrlFor(double latitude, double longitude) =>
+        $"https://api.open-meteo.com/v1/forecast?latitude={latitude.ToString(CultureInfo.InvariantCulture)}" +
+        $"&longitude={longitude.ToString(CultureInfo.InvariantCulture)}" +
         "&current=temperature_2m,apparent_temperature,wind_speed_10m";
 
     /// <summary>Сколько результатов забираем из выдачи: часть из них затем выкачивается целиком.</summary>

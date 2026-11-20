@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Text.Json;
 using HyprStart.Core.Settings;
 
@@ -138,6 +138,25 @@ public sealed class SettingsStore
             AppLog.Write("settings: миграция v4->v5 выполнена (margin 36)");
         }
 
+        if (settings.Version < 6)
+        {
+            // v5 -> v6: переносимость. Base URL мини-чата вынесен в настройки,
+            // появились погодные координаты и флаг скрытия панели MINI AI.
+            settings.ChatBaseUrl ??= string.Empty;
+            settings.Weather ??= new WeatherLocationSettings();
+
+            // Старый файл мог не иметь координат вовсе: тогда их определит
+            // автогеолокация при старте (см. LocationBootstrapper), а не хардкод.
+            if (Math.Abs(settings.Weather.Latitude) < 0.000001 &&
+                Math.Abs(settings.Weather.Longitude) < 0.000001)
+            {
+                settings.Weather.City = string.Empty;
+            }
+
+            settings.Version = 6;
+            changed = true;
+            AppLog.Write("settings: миграция v5->v6 выполнена (base URL, погода, скрытие чата)");
+        }
         return changed;
     }
 

@@ -1,4 +1,4 @@
-﻿namespace HyprStart.Core.Input;
+namespace HyprStart.Core.Input;
 
 /// <summary>
 /// Горячая клавиша как пара «модификаторы + виртуальный код» — то, что нужно
@@ -57,6 +57,23 @@ public readonly record struct HotkeySpec(uint Modifiers, uint VirtualKey)
         return true;
     }
 
+    /// <summary>
+    /// Собирает комбинацию из WPF-ввода (окно настроек). Возвращает null, если
+    /// клавиша не поддерживается или модификатор не выбран: голая клавиша как
+    /// глобальный хоткей забрала бы ввод у всей системы.
+    /// </summary>
+    public static HotkeySpec? FromKey(uint modifiers, uint virtualKey)
+    {
+        if (modifiers == 0 || virtualKey == 0) return null;
+        if ((modifiers & ~(ModAlt | ModControl | ModShift | ModWin)) != 0) return null;
+        if (KeyName(virtualKey).StartsWith("0x", StringComparison.Ordinal)) return null;
+
+        return new HotkeySpec(modifiers, virtualKey);
+    }
+
+    /// <summary>Годится ли виртуальный код как основная клавиша хоткея.</summary>
+    public static bool IsAssignableKey(uint virtualKey)
+        => virtualKey != 0 && !KeyName(virtualKey).StartsWith("0x", StringComparison.Ordinal);
     public string Describe()
     {
         var parts = new List<string>(4);

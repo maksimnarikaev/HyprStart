@@ -1,4 +1,4 @@
-﻿<Window x:Class="HyprStart.App.MainWindow"
+<Window x:Class="HyprStart.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="HyprStart"
@@ -252,7 +252,13 @@
 
         <!-- (г) быстрый доступ + плеер + визуализатор -->
         <HeaderedContentControl x:Name="PanelQuick" Style="{StaticResource PanelStyle}">
-            <Grid>
+            <HeaderedContentControl.Tag>
+                <!-- Настройки: универсальный клиент MINI AI, хоткей, тема, автозапуск -->
+                <Button Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                        Style="{StaticResource QuickGlyphButtonStyle}" Padding="6,2" Margin="0"
+                        ToolTip="Настройки (Ctrl+,)"
+                        Click="OnOpenSettings" />
+            </HeaderedContentControl.Tag>            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -375,10 +381,16 @@
         <HeaderedContentControl x:Name="PanelChat" Style="{StaticResource PanelStyle}">
             <HeaderedContentControl.Tag>
                 <!-- кнопка очистки контекста в шапке карточки -->
-                <Button Content="Очистить" Style="{StaticResource QuickButtonStyle}"
-                        FontSize="11" Margin="0" Padding="10,3"
-                        ToolTip="Очистить чат (Ctrl+L)"
-                        Click="OnChatClear" />
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Очистить" Style="{StaticResource QuickButtonStyle}"
+                            FontSize="11" Margin="0,0,6,0" Padding="10,3"
+                            ToolTip="Очистить чат (Ctrl+L)"
+                            Click="OnChatClear" />
+                    <Button Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                            Style="{StaticResource QuickGlyphButtonStyle}" Padding="6,2" Margin="0"
+                            ToolTip="Настройки MINI AI (Ctrl+,)"
+                            Click="OnOpenSettings" />
+                </StackPanel>
             </HeaderedContentControl.Tag>
 
             <Grid>

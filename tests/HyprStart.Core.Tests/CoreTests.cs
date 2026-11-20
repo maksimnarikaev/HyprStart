@@ -1,4 +1,4 @@
-﻿using HyprStart.Core.Input;
+using HyprStart.Core.Input;
 using HyprStart.Core.Library;
 using HyprStart.Core.Layout;
 using Xunit;
@@ -89,6 +89,117 @@ public class HotkeySpecTests
     public void RejectsInvalid(string text)
     {
         Assert.False(HotkeySpec.TryParse(text, out _));
+    }
+
+    // ---------- переназначение хоткея из окна настроек ----------
+
+    [Fact]
+    public void FromKey_AltSpace_MatchesDefault()
+    {
+        var spec = HotkeySpec.FromKey(HotkeySpec.ModAlt, 0x20);
+
+        Assert.NotNull(spec);
+        Assert.Equal(HotkeySpec.AltSpace, spec!.Value);
+    }
+
+    [Theory]
+    [InlineData(HotkeySpec.ModControl, 0x48u)]
+    [InlineData(HotkeySpec.ModControl | HotkeySpec.ModAlt, 0x48u)]
+    [InlineData(HotkeySpec.ModControl | HotkeySpec.ModAlt | HotkeySpec.ModShift, 0x7Bu)]
+    [InlineData(HotkeySpec.ModWin, 0x41u)]
+    [InlineData(HotkeySpec.ModControl | HotkeySpec.ModAlt | HotkeySpec.ModShift | HotkeySpec.ModWin, 0x31u)]
+    public void FromKey_AcceptsSupportedCombinations(uint modifiers, uint virtualKey)
+    {
+        var spec = HotkeySpec.FromKey(modifiers, virtualKey);
+
+        Assert.NotNull(spec);
+        Assert.Equal(modifiers, spec!.Value.Modifiers);
+        Assert.Equal(virtualKey, spec.Value.VirtualKey);
+        Assert.True(spec.Value.IsValid);
+    }
+
+    [Fact]
+    public void FromKey_NoModifier_Rejected()
+    {
+        // Голая клавиша забрала бы ввод у всей системы.
+        Assert.Null(HotkeySpec.FromKey(0, 0x20));
+    }
+
+    [Fact]
+    public void FromKey_NoKey_Rejected()
+    {
+        Assert.Null(HotkeySpec.FromKey(HotkeySpec.ModAlt, 0));
+    }
+
+    [Fact]
+    public void FromKey_UnknownModifierBit_Rejected()
+    {
+        Assert.Null(HotkeySpec.FromKey(0x10, 0x20));
+    }
+
+    [Theory]
+    [InlineData(0x20u)]
+    [InlineData(0x41u)]
+    [InlineData(0x70u)]
+    [InlineData(0x7Bu)]
+    public void IsAssignableKey_TrueForKnownKeys(uint virtualKey)
+    {
+        Assert.True(HotkeySpec.IsAssignableKey(virtualKey));
+    }
+
+    [Fact]
+    public void IsAssignableKey_FalseForZero()
+    {
+        Assert.False(HotkeySpec.IsAssignableKey(0));
+    }
+
+    [Fact]
+    public void FromKey_UnknownKey_RejectedTheSameWayAsIsAssignableKey()
+    {
+        const uint unknown = 0xFE;
+
+        Assert.False(HotkeySpec.IsAssignableKey(unknown));
+        Assert.Null(HotkeySpec.FromKey(HotkeySpec.ModAlt, unknown));
+    }
+
+    [Fact]
+    public void Describe_UsesCanonicalOrderCtrlAltShiftWin()
+    {
+        var spec = HotkeySpec.FromKey(
+            HotkeySpec.ModWin | HotkeySpec.ModShift | HotkeySpec.ModAlt | HotkeySpec.ModControl,
+            0x41);
+
+        Assert.Equal("Ctrl+Alt+Shift+Win+A", spec!.Value.Describe());
+    }
+
+    [Fact]
+    public void Describe_AltSpaceDefault()
+    {
+        Assert.Equal("Alt+Space", HotkeySpec.AltSpace.Describe());
+        Assert.Equal("Alt+Space", HotkeySpec.AltSpace.ToString());
+    }
+
+    [Theory]
+    [InlineData("Alt+Space")]
+    [InlineData("Ctrl+Alt+H")]
+    [InlineData("Shift+F12")]
+    [InlineData("Win+Space")]
+    [InlineData("ctrl+alt+h")]
+    public void Describe_RoundTripsThroughTryParse(string text)
+    {
+        Assert.True(HotkeySpec.TryParse(text, out var spec));
+
+        Assert.True(HotkeySpec.TryParse(spec.Describe(), out var again));
+        Assert.Equal(spec, again);
+    }
+
+    [Fact]
+    public void FromKey_RoundTripsThroughTryParse()
+    {
+        var spec = HotkeySpec.FromKey(HotkeySpec.ModControl | HotkeySpec.ModAlt, 0x48);
+
+        Assert.True(HotkeySpec.TryParse(spec!.Value.Describe(), out var parsed));
+        Assert.Equal(spec.Value, parsed);
     }
 }
 

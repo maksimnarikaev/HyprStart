@@ -1,4 +1,4 @@
-﻿using HyprStart.Core.Layout;
+using HyprStart.Core.Layout;
 
 namespace HyprStart.Core.Settings;
 
@@ -78,11 +78,11 @@ public sealed class AppSettings
 
     public PanelLayoutSettings Layout { get; set; } = new();
 
-    /// <summary>Модель мини-чата DeepSeek. По умолчанию deepseek-chat.</summary>
+    /// <summary>Модель мини-чата. По умолчанию deepseek-chat, для других провайдеров задаётся в окне настроек.</summary>
     public string ChatModel { get; set; } = "deepseek-chat";
 
     /// <summary>
-    /// Ключ DeepSeek API. Обычно пусто: ключ берётся из переменной окружения
+    /// Ключ API (DeepSeek/OpenAI/OpenRouter/Groq/Ollama). Обычно пусто: ключ берётся из переменной окружения
     /// DEEPSEEK_API_KEY. Поле — для тех, кто не хочет держать переменную.
     /// </summary>
     public string ChatApiKey { get; set; } = string.Empty;
@@ -92,6 +92,24 @@ public sealed class AppSettings
     /// (Koala Clash / mihomo / другой локальный клиент). Пусто — системный прокси Windows.
     /// </summary>
     public string ChatProxy { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Базовый адрес OpenAI-совместимого API: https://api.deepseek.com, https://api.openai.com/v1,
+    /// https://openrouter.ai/api/v1, http://localhost:11434/v1 (Ollama). Пусто - DeepSeek по умолчанию.
+    /// </summary>
+    public string ChatBaseUrl { get; set; } = string.Empty;
+
+    /// <summary>Скрыть панель MINI AI целиком: чат не грузит сеть и не занимает место в раскладке.</summary>
+    public bool HideChatPanel { get; set; }
+
+    /// <summary>Город и координаты для погоды; при первом старте определяются по IP.</summary>
+    public WeatherLocationSettings Weather { get; set; } = new();
+
+    /// <summary>
+    /// true, если стартовый набор пинов уже подсеян (или пользователь сам удалил пины -
+    /// тогда повторно навязывать не нужно).
+    /// </summary>
+    public bool SeedPinsLogged { get; set; }
 }
 
 public static class SettingsSchema
@@ -100,5 +118,5 @@ public static class SettingsSchema
     /// 1 — первая версия (перехват Win включён, хоткея нет).
     /// 2 — хоткей Alt+Space, перехват Win выключен по умолчанию.
     /// </summary>
-    public const int Version = 5;
+    public const int Version = 6;
 }
