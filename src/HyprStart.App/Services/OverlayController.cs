@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Threading;
 using System.Windows.Threading;
 
 namespace HyprStart.App.Services;
@@ -13,6 +14,13 @@ namespace HyprStart.App.Services;
 internal sealed class OverlayController
 {
     private const long IgnoreDeactivateMs = 250;
+
+    /// <summary>
+    /// Сколько модальных окон (настройки и т.п.) сейчас держат оверлей открытым.
+    /// Пока счётчик больше нуля, Deactivated не скрывает панель: иначе открытие
+    /// дочернего окна мгновенно сворачивало лаунчер.
+    /// </summary>
+    private static int _suppressAutoHide;
 
     private readonly MainWindow _window;
     private readonly Action? _sampleAutoTheme;
@@ -31,6 +39,27 @@ internal sealed class OverlayController
     public bool IsVisible => _visible;
     public bool IsPrewarmed => _prewarmed;
     public MainWindow Window => _window;
+
+    /// <summary>
+    /// Подавляет автоскрытие оверлея по Deactivated, пока открыто дочернее окно.
+    /// Возвращает IDisposable: освобождение снимает подавление (в т.ч. при исключении).
+    /// </summary>
+    public static IDisposable SuppressAutoHide()
+    {
+        Interlocked.Increment(ref _suppressAutoHide);
+        return new SuppressScope();
+    }
+
+    private sealed class SuppressScope : IDisposable
+    {
+        private int _disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                Interlocked.Decrement(ref _suppressAutoHide);
+        }
+    }
 
     public void Prewarm()
     {
@@ -135,6 +164,8 @@ internal sealed class OverlayController
     private void OnDeactivated(object? sender, EventArgs e)
     {
         if (!_visible) return;
+        // модальное окно (настройки) забрало фокус — панель должна остаться открытой
+        if (Volatile.Read(ref _suppressAutoHide) > 0) return;
         if (Environment.TickCount64 - _shownAtTick < IgnoreDeactivateMs) return;
         Hide();
     }

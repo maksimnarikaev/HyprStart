@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -41,16 +41,52 @@ public partial class MainWindow : Window
             return;
         }
 
-        var window = new SettingsWindow(_settings, _themes) { Owner = this };
+        // Пока открыто окно настроек, оверлей не должен скрываться по Deactivated,
+        // иначе клик по шестерёнке сворачивал весь лаунчер.
+        var suppress = OverlayController.SuppressAutoHide();
+
+        SettingsWindow window;
+        try
+        {
+            window = new SettingsWindow(_settings, _themes) { Owner = this };
+        }
+        catch
+        {
+            // XAML-ошибка в настройках не должна убивать процесс: логируем и живём дальше.
+            suppress.Dispose();
+            AppLog.Write("settings: не удалось создать окно настроек");
+            throw;
+        }
+
         window.Saved += OnSettingsSaved;
         window.Closed += (_, _) =>
         {
             _settingsWindow = null;
-            SearchBox.Focus();
+            suppress.Dispose();
+
+            // Возвращаем фокус панели: без Activate() клавиатура остаётся у закрытого окна,
+            // а SearchBox.Focus() на скрытом оверлее только сбивает прицел.
+            if (IsVisible)
+            {
+                Activate();
+                SearchBox.Focus();
+            }
         };
 
         _settingsWindow = window;
-        window.Show();
+
+        try
+        {
+            window.Show();
+        }
+        catch
+        {
+            // если Show() упал, окно не откроется и Closed не придёт — снимаем подавление вручную
+            _settingsWindow = null;
+            suppress.Dispose();
+            AppLog.Write("settings: Show() завершился ошибкой");
+            throw;
+        }
     }
 
     /// <summary>

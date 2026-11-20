@@ -1,4 +1,4 @@
-<Window x:Class="HyprStart.App.SettingsWindow"
+﻿<Window x:Class="HyprStart.App.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource SettingsWindowTitle}"
@@ -45,7 +45,10 @@
                                         Background="{DynamicResource MenuBrush}"
                                         BorderBrush="{DynamicResource PillBorderBrush}" BorderThickness="1"
                                         Padding="4">
-                                    <ScrollViewer MaxHeight="220" Style="{DynamicResource DarkScrollBarStyle}">
+                                    <ScrollViewer MaxHeight="220">
+                                        <ScrollViewer.Resources>
+                                            <Style TargetType="ScrollBar" BasedOn="{StaticResource DarkScrollBarStyle}" />
+                                        </ScrollViewer.Resources>
                                         <ItemsPresenter />
                                     </ScrollViewer>
                                 </Border>
