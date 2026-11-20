@@ -112,7 +112,7 @@ Settings live in `%LOCALAPPDATA%\HyprStart\settings.json` and are not part of th
 Requires the **.NET 8 SDK** on Windows 10 1809+ / Windows 11.
 
 ```powershell
-git clone https://github.com/<owner>/HyprStart.git
+git clone https://github.com/maksimnarikaev/HyprStart.git
 cd HyprStart
 
 dotnet build HyprStart.sln -c Release
