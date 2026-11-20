@@ -167,7 +167,9 @@
                                  Foreground="{DynamicResource TextBrush}" FontSize="12"
                                  VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                                  Cursor="Hand"
-                                 PreviewKeyDown="OnHotkeyPreview" GotFocus="OnHotkeyFocus" LostFocus="OnHotkeyBlur" />
+                                 PreviewMouseLeftButtonDown="OnHotkeyMouseDown"
+                                 PreviewKeyDown="OnHotkeyPreview"
+                                 GotKeyboardFocus="OnHotkeyFocus" LostKeyboardFocus="OnHotkeyBlur" />
                     </Border>
                 </StackPanel>
 

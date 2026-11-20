@@ -28,6 +28,10 @@ internal sealed class KeyboardHookService : IDisposable
     private static NativeMethods.LowLevelKeyboardProc? _proc;
     private static KeyboardHookService? _current;
 
+    // Пауза на время записи комбинации в окне настроек: хук не должен
+    // принимать нажатия, пока пользователь переназначает глобальный хоткей.
+    private static int _pauseCount;
+
     private readonly WinKeyStateMachine _machine;
     private readonly ManualResetEventSlim _installed = new(false);
 
@@ -45,6 +49,31 @@ internal sealed class KeyboardHookService : IDisposable
     public event Action? OverlayRequested;
 
     public bool IsInstalled => Volatile.Read(ref _hookHandle) != IntPtr.Zero;
+
+    /// <summary>Хук временно не реагирует на клавиатуру (идёт запись комбинации).</summary>
+    public static bool IsPaused => Volatile.Read(ref _pauseCount) > 0;
+
+    /// <summary>
+    /// Приостановить обработку хука. Возвращает scope: Dispose снимает паузу.
+    /// Вложенные вызовы безопасны — счётчик, а не флаг.
+    /// </summary>
+    public static IDisposable Pause()
+    {
+        Interlocked.Increment(ref _pauseCount);
+        return new PauseScope();
+    }
+
+    private sealed class PauseScope : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            if (Interlocked.Decrement(ref _pauseCount) < 0) Volatile.Write(ref _pauseCount, 0);
+        }
+    }
     public bool InstallFailed => _installFailed;
     public WinKeyStateMachine Machine => _machine;
 
@@ -155,6 +184,13 @@ internal sealed class KeyboardHookService : IDisposable
         if (nCode < 0 || self is null)
         {
             return NativeMethods.CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+        }
+
+        // Пауза (запись комбинации в настройках): не трогаем клавиатуру вообще,
+        // иначе нажатие Alt/одиночного Win во время записи уводило окно в меню.
+        if (IsPaused)
+        {
+            return NativeMethods.CallNextHookEx(self._hookHandle, nCode, wParam, lParam);
         }
 
         int message = unchecked((int)wParam.ToInt64());
