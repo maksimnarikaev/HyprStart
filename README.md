@@ -1,4 +1,4 @@
-﻿# HyprStart
+# HyprStart
 
 Меню «Пуск» в стиле Hyprland для Windows 11: по **Alt+Space** выезжает оверлей из четырёх
 панелей — тёмное хвойное стекло, двухцветная градиентная рамка фокуса 45° у активной панели
@@ -57,9 +57,9 @@ powershell -ExecutionPolicy Bypass -File dotnet-install.ps1 -Channel 8.0 -Instal
 # источник NuGet нужен для WinRT-проекции (GSMTC) и xunit
 & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" nuget add source https://api.nuget.org/v3/index.json -n nuget.org
 
-cd startmenu
+cd C:\Users\Maksim\HyprStart
 & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" build HyprStart.sln -c Debug
-& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" test tests\HyprStart.Core.Tests   # 60 тестов
+& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" test tests\HyprStart.Core.Tests   # 233 теста
 
 # релизная сборка (её и использует автозапуск)
 & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" publish src\HyprStart.App\HyprStart.App.csproj `
