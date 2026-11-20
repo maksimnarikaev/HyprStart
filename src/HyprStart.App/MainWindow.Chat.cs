@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -324,7 +325,10 @@ public partial class MainWindow : Window
     private void Relayout()
     {
         var spec = _settings.Current.Layout.ToSpec();
-        var result = LayoutCalculator.Compute(Width, Height, spec);
+        // При скрытой панели MINI AI «Закреплено» забирает всю правую колонку:
+        // флаг уходит в расчёт, а не просто прячет PanelChat.
+        bool hideChat = _settings.Current.HideChatPanel;
+        var result = LayoutCalculator.Compute(Width, Height, spec, hideChat);
         _lastLayout = result;
 
         Place(PanelApps, result.Apps);
@@ -334,17 +338,18 @@ public partial class MainWindow : Window
         Place(PanelQuick, result.Quick);
         Place(Polybar, result.Polybar);
 
-        FitPinTiles(result.Pinned);
+        FitPinTiles(result.Pinned, hideChat);
 
         AppLog.Write($"layout: apps={result.Apps} pinned={result.Pinned} chat={result.Chat} " +
-                     $"frequent={result.Frequent} quick={result.Quick} polybar={result.Polybar}");
+                     $"frequent={result.Frequent} quick={result.Quick} polybar={result.Polybar} " +
+                     $"hideChat={hideChat}");
     }
 
     /// <summary>
     /// Подгоняет плитки закреплённого под ширину карточки: сетка 4x2 должна
     /// влезать целиком (8 плиток = бейджи Alt+1..9), прокрутка — только запасной вариант.
     /// </summary>
-    private void FitPinTiles(PixelRect pinned)
+    private void FitPinTiles(PixelRect pinned, bool hideChat)
     {
         // Внутренние отступы PanelStyle: рамка + padding заголовка и контента.
         const double chrome = 34;
@@ -352,23 +357,63 @@ public partial class MainWindow : Window
         double inner = pinned.Width - chrome;
         if (inner <= 0) return;
 
+        // Колонки адаптивны к ширине панели: при скрытом мини-чате панель почти вдвое
+        // шире, и сетка добавляет колонки вместо того, чтобы растягивать плитки.
+        int columns = PinTileGeometry.ColumnCount(inner);
+        // Панели сетки живут внутри ItemsPanelTemplate, поэтому именованные поля
+        // для них не генерируются — достаём их из визуального дерева по x:Name.
+        var pinsGrid = FindGrid(PinsList, "PinsGrid");
+        var folderGrid = FindGrid(FolderList, "FolderGrid");
+        if (pinsGrid is not null && pinsGrid.Columns != columns) pinsGrid.Columns = columns;
+        if (folderGrid is not null && folderGrid.Columns != columns) folderGrid.Columns = columns;
+
+        double tile = PinTileGeometry.TileWidth(inner, columns);
         if (PinsList.ItemsSource is IReadOnlyList<PinVm> pins)
         {
-            foreach (var pin in pins) pin.FitTo(inner);
+            foreach (var pin in pins) pin.FitTo(inner, columns);
         }
 
+        // Папка — отдельная сетка той же ширины, значит и колонки те же.
         if (FolderList.ItemsSource is IReadOnlyList<PinVm> folderPins)
         {
-            foreach (var pin in folderPins) pin.FitTo(inner);
+            foreach (var pin in folderPins) pin.FitTo(inner, columns);
         }
 
-        double gridHeight = PinTileGeometry.GridHeight(PinTileGeometry.TileHeight(PinTileGeometry.TileWidth(inner)));
-        PinsScroll.VerticalScrollBarVisibility = PinTileGeometry.FitsWithoutScroll(inner, pinned.Height - 56)
+        double gridHeight = PinTileGeometry.GridHeight(PinTileGeometry.TileHeight(tile));
+        PinsScroll.VerticalScrollBarVisibility = PinTileGeometry.FitsWithoutScroll(inner, pinned.Height - 56, columns)
             ? ScrollBarVisibility.Disabled
             : ScrollBarVisibility.Auto;
 
-        AppLog.Write($"pins: inner={inner:0} tile={PinTileGeometry.TileWidth(inner):0.#}" +
-                     $"x{PinTileGeometry.TileHeight(PinTileGeometry.TileWidth(inner)):0.#} grid={gridHeight:0}");
+        AppLog.Write($"pins: inner={inner:0} cols={columns} tile={tile:0.#}" +
+                     $"x{PinTileGeometry.TileHeight(tile):0.#} grid={gridHeight:0} hideChat={hideChat}");
+    }
+
+    /// <summary>
+    /// Ищет UniformGrid сетки плиток внутри ItemsControl. Панель задана в ItemsPanelTemplate,
+    /// поэтому её нельзя адресовать по имени из разметки — обходим визуальное дерево.
+    /// </summary>
+    private static UniformGrid? FindGrid(ItemsControl host, string name)
+    {
+        if (host is null) return null;
+        for (int i = 0; i < host.Items.Count; i++)
+        {
+            if (host.ItemContainerGenerator.ContainerFromIndex(i) is DependencyObject container
+                && FindGridByName(container, name) is { } grid)
+                return grid;
+        }
+        return null;
+    }
+
+    private static UniformGrid? FindGridByName(DependencyObject root, string name)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is UniformGrid grid && grid.Name == name) return grid;
+            if (FindGridByName(child, name) is { } nested) return nested;
+        }
+        return null;
     }
 
     private static void Place(FrameworkElement element, PixelRect rect)

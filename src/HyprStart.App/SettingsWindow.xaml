@@ -156,10 +156,13 @@
                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                     <TextBlock Text="{DynamicResource SettingsHotkeyHeader}" Style="{DynamicResource SectionHeaderStyle}" Margin="0,0,0,8" />
                     <Border Style="{DynamicResource PillStyle}" Height="34">
+                        <!-- IsReadOnly + без каретки: поле только показывает/ловит комбинацию,
+                             текстовый ввод и курсор здесь не нужны и мешали записи. -->
                         <TextBox x:Name="HotkeyBox" Background="Transparent" BorderThickness="0"
+                                 IsReadOnly="True" IsReadOnlyCaretVisible="False" CaretBrush="Transparent"
                                  Foreground="{DynamicResource TextBrush}" FontSize="12"
                                  VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                                 IsReadOnly="True" Cursor="Hand"
+                                 Cursor="Hand"
                                  PreviewKeyDown="OnHotkeyPreview" GotFocus="OnHotkeyFocus" LostFocus="OnHotkeyBlur" />
                     </Border>
                 </StackPanel>

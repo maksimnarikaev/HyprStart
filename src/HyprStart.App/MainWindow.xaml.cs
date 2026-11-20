@@ -150,8 +150,16 @@ public sealed class PinVm : System.ComponentModel.INotifyPropertyChanged
 
     /// <summary>Подгоняет обе стороны плитки под доступную ширину контента.</summary>
     public void FitTo(double availableWidth)
+        => FitTo(availableWidth, PinTileGeometry.ColumnCount(availableWidth));
+
+    /// <summary>
+    /// Подгоняет плитку под ширину контента при заданном числе колонок.
+    /// Колонки считает раскладка (она знает, скрыт ли мини-чат), а плитка лишь
+    /// подстраивает ширину — иначе сетка и плитки считали бы колонки по-разному.
+    /// </summary>
+    public void FitTo(double availableWidth, int columns)
     {
-        double width = PinTileGeometry.TileWidth(availableWidth);
+        double width = PinTileGeometry.TileWidth(availableWidth, columns);
         TileWidth = width;
         TileHeight = PinTileGeometry.TileHeight(width);
     }

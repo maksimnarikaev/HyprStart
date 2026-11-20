@@ -68,7 +68,7 @@ public partial class MainWindow : Window
         PanelPinned.Header = TextFx.Spaced(Localizer.T("PanelPinnedHeader")) + (_pins.Items.Count > 0 ? "   " + _pins.Items.Count : string.Empty);
 
         // Свежие плитки создаются с размером по умолчанию — сразу подгоняем под карточку.
-        if (_lastLayout is { } layout) FitPinTiles(layout.Pinned);
+        if (_lastLayout is { } layout) FitPinTiles(layout.Pinned, _settings.Current.HideChatPanel);
     }
 
     private void WirePinsOnce()

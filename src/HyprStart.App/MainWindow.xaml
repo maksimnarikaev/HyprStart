@@ -184,7 +184,7 @@
                         <ItemsControl x:Name="PinsList" ItemTemplate="{StaticResource PinTileTemplate}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="5" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                    <UniformGrid x:Name="PinsGrid" Columns="5" HorizontalAlignment="Left" VerticalAlignment="Top" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
@@ -214,7 +214,7 @@
                         <ItemsControl x:Name="FolderList" ItemTemplate="{StaticResource PinTileTemplate}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="5" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                    <UniformGrid x:Name="FolderGrid" Columns="5" HorizontalAlignment="Left" VerticalAlignment="Top" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>

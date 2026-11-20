@@ -110,6 +110,9 @@ public partial class SettingsWindow : Window
     /// <summary>Настройки сохранены: окно просит применить их к лаунчеру.</summary>
     public event Action? Saved;
 
+    /// <summary>Активная пауза глобального хоткея на время записи комбинации.</summary>
+    private IDisposable? _hotkeyPause;
+
     private static string DescribeKey(string? key)
     {
         if (!string.IsNullOrEmpty(key))
@@ -124,17 +127,51 @@ public partial class SettingsWindow : Window
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape && !HotkeyBox.IsFocused)
+        // Пока идёт запись комбинации, окно не реагирует ни на Esc, ни на Enter:
+        // эти клавиши — часть переназначаемой комбинации, а не команда окну.
+        if (IsHotkeyCaptureActive)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape)
         {
             e.Handled = true;
             CancelAndClose();
             return;
         }
 
-        if (e.Key == Key.Enter && !HotkeyBox.IsFocused)
+        if (e.Key == Key.Enter)
         {
             e.Handled = true;
             SaveAndClose();
+        }
+    }
+
+    /// <summary>
+    /// Идёт запись комбинации: фокус на HotkeyBox или внутри его шаблона.
+    /// IsFocused проверять недостаточно — при клике фокус может оказаться на
+    /// внутреннем элементе шаблона TextBox, и окно закрывалось по Esc во время записи.
+    /// </summary>
+    private bool IsHotkeyCaptureActive
+    {
+        get
+        {
+            var focused = Keyboard.FocusedElement as DependencyObject;
+            if (focused is null) return false;
+            if (ReferenceEquals(focused, HotkeyBox)) return true;
+
+            // Поднимаемся по логическому дереву до окна: если встретили HotkeyBox — фокус внутри него.
+            for (var node = focused; node is not null;)
+            {
+                if (ReferenceEquals(node, HotkeyBox)) return true;
+                node = node is FrameworkElement fe && fe.Parent is not null
+                    ? fe.Parent
+                    : LogicalTreeHelper.GetParent(node);
+            }
+
+            return false;
         }
     }
 
@@ -142,12 +179,21 @@ public partial class SettingsWindow : Window
     {
         HotkeyBox.Text = Localizer.T("SettingsHotkeyCapturePrompt");
         HotkeyBox.Foreground = (MediaBrush)FindResource("AccentBrush");
+
+        // Старая комбинация отпускается ОС: иначе её нажатие во время записи
+        // сворачивало лаунчер вместо того, чтобы попасть в поле.
+        _hotkeyPause ??= HotkeyService.Pause();
+        AppLog.Write("settings: запись комбинации — глобальный хоткей приостановлен");
     }
 
     private void OnHotkeyBlur(object sender, RoutedEventArgs e)
     {
         HotkeyBox.Text = _hotkey.Describe();
         HotkeyBox.Foreground = (MediaBrush)FindResource("TextBrush");
+
+        _hotkeyPause?.Dispose();
+        _hotkeyPause = null;
+        AppLog.Write("settings: запись комбинации завершена — глобальный хоткей возвращён");
     }
 
     /// <summary>Захват комбинации: ждём модификатор + клавишу, Esc отменяет захват.</summary>
@@ -159,8 +205,9 @@ public partial class SettingsWindow : Window
 
         if (key == Key.Escape)
         {
+            // Esc — отмена записи, а не закрытие окна настроек.
             HotkeyBox.Text = _hotkey.Describe();
-            Keyboard.ClearFocus();
+            EndHotkeyCapture();
             return;
         }
 
@@ -192,6 +239,21 @@ public partial class SettingsWindow : Window
         _hotkey = built.Value;
         HotkeyBox.Text = _hotkey.Describe();
         HotkeyBox.Foreground = (MediaBrush)FindResource("TextBrush");
+
+        // Комбинация записана — запись закончена. Без этого фокус оставался в поле,
+        // Esc/Enter продолжали считаться частью комбинации, а глобальный хоткей
+        // оставался приостановленным до закрытия окна.
+        EndHotkeyCapture();
+    }
+
+    /// <summary>Завершает запись: снимает фокус с поля и возвращает глобальный хоткей.</summary>
+    private void EndHotkeyCapture()
+    {
+        _hotkeyPause?.Dispose();
+        _hotkeyPause = null;
+
+        if (HotkeyBox.IsKeyboardFocusWithin)
+            Keyboard.ClearFocus();
     }
 
     /// <summary>Модификаторы WPF -&gt; маска HotkeySpec (те же биты, что ждёт RegisterHotKey).</summary>

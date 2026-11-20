@@ -27,7 +27,7 @@
     <sys:String x:Key="QuickDownloads">⤓ Downloads</sys:String>
     <sys:String x:Key="QuickExplorer">🗀 Explorer</sys:String>
     <sys:String x:Key="QuickSettings">⚙ Settings</sys:String>
-    <sys:String x:Key="QuickTerminal">&amp;gt;_ Terminal</sys:String>
+    <sys:String x:Key="QuickTerminal">❯_ Terminal</sys:String>
     <sys:String x:Key="PowerHeader">POWER</sys:String>
     <sys:String x:Key="PowerSleep">Sleep</sys:String>
     <sys:String x:Key="PowerRestart">Restart</sys:String>

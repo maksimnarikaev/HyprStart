@@ -50,7 +50,19 @@ public static class LayoutCalculator
     /// Раскладка 4 панелей + polybar внутри прямоугольника (в DIP).
     /// Все значения клампятся, поэтому даже при крошечном экране результат неотрицательный.
     /// </summary>
-    public static LayoutResult Compute(double width, double height, LayoutSpec? spec = null)
+    /// <param name="width">Ширина оверлея (DIP).</param>
+    /// <param name="height">Высота оверлея (DIP).</param>
+    /// <param name="spec">Параметры раскладки; null - <see cref="LayoutSpec.Default"/>.</param>
+    /// <param name="hideChatPanel">
+    /// Панель MINI AI скрыта: «Закреплено» расширяется на всю ширину правой колонки
+    /// и встаёт над «Быстрым доступом», а не делит с чатом верхнюю ячейку пополам.
+    /// Панель чата при этом вырождается в прямоугольник нулевой ширины.
+    /// </param>
+    public static LayoutResult Compute(
+        double width,
+        double height,
+        LayoutSpec? spec = null,
+        bool hideChatPanel = false)
     {
         spec ??= LayoutSpec.Default;
 
@@ -76,12 +88,29 @@ public static class LayoutCalculator
         double rightX = margin + leftWidth + gap;
         double bottomY = margin + pinnedHeight + gap;
 
-        // Верхнюю правую ячейку делим пополам: слева закреплённое, справа мини-чат.
-        // Делим по тому же gap, что и между остальными карточками, чтобы сетка была ровной.
-        double pinnedWidth = Math.Max(0, Round((rightWidth - gap) / 2.0));
-        pinnedWidth = Math.Min(pinnedWidth, Math.Max(0, rightWidth - gap));
-        double chatWidth = Math.Max(0, rightWidth - pinnedWidth - gap);
-        double chatX = rightX + pinnedWidth + gap;
+        // Ширина «Закреплено» и мини-чата.
+        // Обычный режим: верхнюю правую ячейку делим пополам, gap тот же, что между
+        // остальными карточками, — сетка остаётся ровной.
+        // Режим hideChatPanel: чата нет, поэтому «Закреплено» забирает всю правую
+        // колонку целиком — справа не остаётся пустой полосы.
+        double pinnedWidth;
+        double chatWidth;
+        double chatX;
+
+        if (hideChatPanel)
+        {
+            pinnedWidth = rightWidth;
+            chatWidth = 0;
+            // Чат вырожден: ставим его в правый край правой колонки нулевой ширины.
+            chatX = rightX + rightWidth;
+        }
+        else
+        {
+            pinnedWidth = Math.Max(0, Round((rightWidth - gap) / 2.0));
+            pinnedWidth = Math.Min(pinnedWidth, Math.Max(0, rightWidth - gap));
+            chatWidth = Math.Max(0, rightWidth - pinnedWidth - gap);
+            chatX = rightX + pinnedWidth + gap;
+        }
 
         return new LayoutResult(
             Apps: new PixelRect(margin, margin, leftWidth, contentHeight),

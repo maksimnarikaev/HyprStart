@@ -27,7 +27,7 @@
     <sys:String x:Key="QuickDownloads">⤓ Загрузки</sys:String>
     <sys:String x:Key="QuickExplorer">🗀 Проводник</sys:String>
     <sys:String x:Key="QuickSettings">⚙ Параметры</sys:String>
-    <sys:String x:Key="QuickTerminal">&amp;gt;_ Терминал</sys:String>
+    <sys:String x:Key="QuickTerminal">❯_ Терминал</sys:String>
     <sys:String x:Key="PowerHeader">ПИТАНИЕ</sys:String>
     <sys:String x:Key="PowerSleep">Сон</sys:String>
     <sys:String x:Key="PowerRestart">Перезагрузка</sys:String>
