@@ -1,170 +1,170 @@
 # HyprStart
 
-Меню «Пуск» в стиле Hyprland для Windows 11: по **Alt+Space** выезжает оверлей из четырёх
-панелей — тёмное хвойное стекло, двухцветная градиентная рамка фокуса 45° у активной панели
-(у неактивных — тонкая приглушённая), скругления 12/10, моноширинный Cascadia Mono,
-лёгкая GPU-анимация появления (0.97 → 1.0, ~140 мс `CubicEase`), капсульный polybar
-и живой рабочий стол сквозь гэпы.
+A **Hyprland-inspired launcher for Windows 11**. Press a hotkey and a translucent overlay slides
+out with your app grid, frequent shortcuts, a search field, media controls and a built-in AI chat.
+Native WPF, no Electron, no background telemetry.
 
-**Проект завершён (фазы 1–5).** Дерево приложений с папками, поиск с калькулятором и frecency,
-закреплённое с папками, drag-and-drop и Alt+1..9, частое, быстрый доступ, питание, капсульный
-живой polybar с cava-визуализатором и событийным управлением плеером через GSMTC.
+![HyprStart overview](assets/overview.png)
 
-## Тема
+---
 
-Палитра сведена к референсу (тёмно-зелёный rice): стекло `#D90E1F1A`, рамка `#9BE8C6 → #4FA98A`,
-акцент `#7FE3B8`, текст `#E4F2EA`, второй план `#A8C4B6`, разделители `#334FA98A`,
-полосы эквалайзера `#9BE8C6 → #3E8F72`, ползунок скроллбара `#556FD3AE`.
-Всё лежит в `src/HyprStart.App/Theme.xaml` — палитра меняется в одном месте.
+## Features
 
-### Встроенные темы и `sakura-pink`
+- **Hyprland-inspired dashboard** — a single frameless overlay window with rounded translucent
+  panels, a pinned app grid, a frequent-apps column and a media player strip. The whole layout is
+  laid out dynamically so pinned tiles reflow (and the chat panel can collapse) without a resize.
+- **Dynamic wallpaper palette extraction** — the accent colour is sampled from the current desktop
+  wallpaper and pushed into every panel as a tinted glass background. Near-black and monochrome
+  wallpapers fall back to the bundled `sakura-pink` palette; the extractor samples ~576 pixels in
+  a single pass and is covered by unit tests.
+- **Built-in two-pass RAG mini-chat** — ask a question in the chat panel. When a web lookup is
+  useful the `WebSearch`/`WebPageExtractor` pipeline runs two passes: first it strips navigation,
+  scripts and cookie banners, then it keeps only fact-carrying paragraphs before they are handed
+  to the model as context. Use `/web <query>` to force a lookup.
+- **EN/RU localization** — every visible string lives in `Resources/Strings.en.xaml` /
+  `Strings.ru.xaml` (135 keys each). The language can be switched in settings without a restart.
+- **Zero-telemetry native WPF** — no analytics, no crash reporting, no updater pings. The only
+  network calls are the ones you configure: your LLM provider, the optional web lookup and
+  Open-Meteo for the weather tile.
+- **Hotkey capture that actually works** — combinations are recorded through a `WH_KEYBOARD_LL`
+  hook, so `Alt+Q`, `Ctrl+Alt+K` and `Win`-combinations are captured instead of opening the system
+  menu or the Start screen.
 
-Помимо базовой хвойной палитры в `src/HyprStart.App/themes/*.json` лежат готовые темы
-(`ice-blue`, `forest-mint`, `sakura-pink`). Новая **`sakura-pink.json`** — в духе Rose Pine /
-Cyberpunk: полупрозрачная тёмно-сливовая подложка `#D918121E`, неоново-розовый акцент
-`#FF75B5`, уходящий в градиенте в лаванду `#C792EA`, мягкий контрастный текст `#F4B8E4`.
-Тема доступна сразу при переключении (клик по пилюле «тема» в polybar листает по кругу).
+---
 
-### Режим `auto` — подхват цветов с экрана
+## Architecture
 
-Тема `auto` (в `settings.json`: `"theme": "auto"`) подстраивает градиент рамки, акцент и тон
-подложки под текущую сцену за окном — включая анимированные обои Wallpaper Engine.
+The solution is split so the interesting logic is testable without a UI thread.
 
-- **Без фонового поллинга вообще.** Кадр снимается **один раз** в момент `OverlayController.Show()`
-  и строго *до* показа окна, чтобы не захватить сам оверлей.
-- Захват — быстрый GDI `BitBlt` с даунскейлом в микро-буфер **32×18 px** (< 2 мс).
-- `WallpaperColorExtractor` (в `HyprStart.Core`) в HSV/HSL отбрасывает тёмные и тусклые пиксели
-  (пороги Saturation/Value), поэтому на ночных сценах не получается грязно-серый цвет.
-- Из оставшихся насыщенных пикселей выбираются **два доминирующих оттенка из разных секторов**
-  цветового круга — это и есть двухцветный градиент рамки.
-- Тёмная подложка панелей слегка тонируется под основной цвет, текст остаётся читаемым.
-- Кадр **монохромный** → откат на палитру `sakura-pink`.
-- Экстрактор покрыт unit-тестами (`HyprStart.Core.Tests`): тёмные/тусклые пиксели, почти
-  тёмная сцена, монохром, выбор двух разных оттенков, пустой буфер.
+| Project | Purpose |
+| --- | --- |
+| `src/HyprStart.Core` | Platform-independent logic: layout calculation, wallpaper colour extraction, settings storage, chat client, web search/extraction, action dispatch, input state machine. |
+| `src/HyprStart.App` | WPF shell (`net8.0-windows10.0.19041.0`): overlay window, settings window, theming, interop (`RegisterHotKey`, `WH_KEYBOARD_LL`, tray icon, GSMTC media sessions). |
+| `tests/HyprStart.Core.Tests` | **409 tests** covering core behaviour: geometry and reflow, colour extraction edge cases, settings migration, chat parsing, SSE streaming, URL handling. |
 
+```
+HyprStart.Core
+├── Actions        command dispatch
+├── Chat           chat client, SSE parser, web search, page extractor
+├── Input          key state machine
+├── Layout         panel geometry and tile reflow
+├── Library        app index and icons
+├── Settings       settings model, storage and migration
+├── Storage        file paths and atomic writes
+└── Theming        wallpaper palette extraction
+```
 
-> **Win не перехватывается.** Открытие меню — `RegisterHotKey` (`Alt+Space`).
-> Хук `WH_KEYBOARD_LL` остался в коде, но выключен: он оставлял ОС в состоянии «Win зажат»
-> и ломал ввод. Подробности — раздел «0.1 Постмортем» в `PLAN.md`.
+**Stack:** .NET 8, WPF, C# 12 (`Nullable` enabled). No third-party runtime dependencies in the app.
 
-## Сборка и запуск
+---
+
+## Hotkeys
+
+| Shortcut | Action |
+| --- | --- |
+| `Alt+Space` | Open / close the overlay (configurable in settings) |
+| `↑` / `↓` | Move the selection in search results |
+| `Enter` | Launch the selected app |
+| `Alt+1` … `Alt+9` | Launch pinned tile 1–9 |
+| `Tab` | Jump from the app list to the chat input |
+| `Ctrl+,` | Open settings |
+| `Ctrl+L` | Clear the chat |
+| `F5` | Rebuild the app index in the background |
+| `Esc` | Close the overlay |
+| RMB on an app | Pin / unpin |
+
+The global open-combination is recorded in **Settings → Hotkey**: press the field, then the
+combination. A modifier is required; `Esc` cancels the recording.
+
+---
+
+## Configuring an LLM provider
+
+HyprStart talks to any OpenAI-compatible `/chat/completions` endpoint. Open **Settings** (`Ctrl+,`)
+and fill in:
+
+| Field | Example | Notes |
+| --- | --- | --- |
+| **Base URL** | `https://api.deepseek.com` | Scheme is optional; `/chat/completions` is appended automatically. |
+| **API Key** | `sk-…` | Stored in `settings.json` and **masked by default** — press the eye button to reveal it. |
+| **Model** | `deepseek-chat` | Any model the endpoint accepts. |
+
+Tested endpoints:
+
+| Provider | Base URL | Model example |
+| --- | --- | --- |
+| DeepSeek | `https://api.deepseek.com` | `deepseek-chat` |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `anthropic/claude-3.5-sonnet` |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
+| Ollama (local) | `http://localhost:11434/v1` | `llama3.1` |
+
+> **The API key is read from settings only.** HyprStart does **not** pick up `DEEPSEEK_API_KEY`
+> (or any other variable) from the environment, so it cannot silently borrow a key that belongs to
+> another tool on your machine.
+
+Settings live in `%LOCALAPPDATA%\HyprStart\settings.json` and are not part of this repository.
+
+---
+
+## Build from source
+
+Requires the **.NET 8 SDK** on Windows 10 1809+ / Windows 11.
 
 ```powershell
-# SDK per-user, без админа
-Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1
-powershell -ExecutionPolicy Bypass -File dotnet-install.ps1 -Channel 8.0 -InstallDir "$env:LOCALAPPDATA\Microsoft\dotnet"
+git clone https://github.com/<owner>/HyprStart.git
+cd HyprStart
 
-# источник NuGet нужен для WinRT-проекции (GSMTC) и xunit
-& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" nuget add source https://api.nuget.org/v3/index.json -n nuget.org
+dotnet build HyprStart.sln -c Release
+dotnet test  tests\HyprStart.Core.Tests -c Release
 
-cd C:\path\to\HyprStart
-& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" build HyprStart.sln -c Debug
-& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" test tests\HyprStart.Core.Tests   # 233 теста
-
-# релизная сборка (её и использует автозапуск)
-& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" publish src\HyprStart.App\HyprStart.App.csproj `
-    -c Release -r win-x64 --self-contained false -p:PublishReadyToRun=true
-.\src\HyprStart.App\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\HyprStart.exe
+# run it
+dotnet run --project src\HyprStart.App\HyprStart.App.csproj -c Release
 ```
 
-| Ключ | Что делает |
-|---|---|
-| без ключей | трей, автозапуск при первом старте, Alt+Space |
-| `--tray` | то же самое (так пишется ключ автозапуска) |
-| `--index [--rebuild]` | собрать индекс приложений и напечатать статистику |
-| `--diag` | консоль + подробный лог |
-| `--selftest` | автопроверка хоткея, код возврата 0/1 |
+### Portable release
 
-## Что умеет
-
-**Список приложений** — дерево как в меню «Программы» Windows: 37 папок, 124 приложения
-внутри, 83 в корне. Одноимённые папки из общих и пользовательских программ склеены.
-Клик по папке раскрывает её (▸/▾) с отступом, при вводе в поиск список переходит в плоский
-режим и ищет внутри папок, подписывая папку серым рядом с названием.
-
-**Поиск с frecency** — статистика из `usage.json` (счётчик запусков + давность) учитывается
-при сортировке: часто запускаемые приложения поднимаются выше при совпадении префикса.
-Качество совпадения всё равно доминирует, а бонус за frecency ограничен сверху — наверх
-не всплывает то, что плохо совпало.
-
-**Калькулятор в поиске** — введите `12*8+4`, результат покажется прямо в строке. `Enter`
-копирует результат в буфер обмена и закрывает оверлей.
-
-**Закреплённое** — сетка плиток; ПКМ по приложению в списке → «Закрепить/Открепить»,
-порядок меняется перетаскиванием, всё в `pins.json`. Пока оверлей открыт, на плитках видны
-мини-индексы `1`..`9`: **`Alt+1`..`Alt+9`** (или `Ctrl+1`..`Ctrl+9`) сразу запускают
-соответствующий пин.
-
-**Частое** — топ-8 по локальному счётчику `usage.json` (запуски + давность).
-
-**Быстрый доступ** — Загрузки, Проводник, Параметры, Терминал; питание (сон/перезагрузка/
-выключение) с подтверждением в панели. Сверху карточки — управление треком (`⏮ ⏯ ⏭` и
-название), под ним на всё оставшееся место растянут эквалайзер.
-
-**Polybar** — не сплошная полоса, а «парящие» капсулы-островки с зазорами
-(`CornerRadius=8`, общий контейнер прозрачный): слева пилюли телеметрии RAM/CPU/VOL,
-по центру подсказки клавиш, справа переключатель темы и часы. Телеметрия:
-CPU (`GetSystemTimes`), RAM (`GlobalMemoryStatusEx`), громкость (`IAudioEndpointVolume`).
-
-**cava-визуализатор** — 30 столбиков по `IAudioMeterInformation`, верхнее скругление и
-вертикальный градиент акцента. Высота меняется через `ScaleTransform.ScaleY`
-(`RenderTransformOrigin="0.5,1"`), а не через `Height` — дерево не инвалидируется по
-Measure/Arrange на каждом тике. Спад плавный (`current = max(target, current * 0.82)`),
-ниже порога столбики «засыпают», и опрос прекращается — в простое ~0.1% CPU.
-
-**Трек (GSMTC)** — событийно, без периодического опроса: подписка на `CurrentSessionChanged`
-и `MediaPropertiesChanged` у кэшированного `GlobalSystemMediaTransportControlsSessionManager`.
-Первый выбор сессии — `GetCurrentSession()`, затем `GetSessions()` с приоритетом статуса
-Playing (так подхватываются Яндекс Музыка и браузеры).
-
-**F5** — пересобрать индекс приложений в фоне, не блокируя интерфейс.
-
-## Матовое стекло без DWM
-
-При открытии меню снимается скриншот рабочего стола → даунскейл в 4 раза (480×270) →
-separable box-blur → каждая панель получает свой кусок через `ImageBrush.Viewbox`
-под тонировкой `#C812101B`. Гэпы не покрываются ничем, поэтому остаются 100% прозрачными.
-Замер: подложка 480×270 готовится **83.9 мс** целиком (сам blur — единицы мс, остальное
-скриншот 1920×1080).
-
-DWM-акрил реализован, но по умолчанию выключен: материал DWM накрывает весь прямоугольник
-окна, регионом не режется и гасит обои в гэпах. Замеры и выводы — `PLAN.md`, раздел 0.2.
-
-## Файлы состояния
-
-```
-%LOCALAPPDATA%\HyprStart\
-  settings.json          hotkey, раскладка, цвета рамки, acrylic-опции
-  pins.json              закреплённое (порядок = порядок перетаскивания)
-  usage.json             счётчики запусков
-  cache\apps.index.json  индекс приложений (12 ч)
-  cache\icons\*.png      иконки 256px
-  logs\app.log           лог с ротацией
-```
-
-## Откат
+`scripts/build-release.ps1` produces a self-contained single-file build and packs it into a zip:
 
 ```powershell
-Remove-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name HyprStart
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-release.ps1 -Clean
 ```
 
-Ничего в системе не патчится. Выход — правый клик по иконке **HS** в трее.
+Output: `dist\HyprStart-win-x64.zip` (`dist/` is git-ignored). The archive is portable — unpack it
+anywhere and run `HyprStart.exe`; no .NET installation is required.
 
-## Если клавиатура «залипла»
+---
 
-Буквы не печатаются, Backspace не удаляет, открываются проводник/поиск — это состояние
-«Win зажат». Нажать физическую **Win** дважды или перезапустить Проводник (`Ctrl+Shift+Esc`).
-В текущей версии это невозможно: хука клавиатуры нет.
+## CI/CD
 
-## Структура
+`.github/workflows/ci.yml` runs on every push and pull request to `main`:
 
-- `src/HyprStart.Core` — без Win32: парсер хоткеев, слияние источников индекса и фильтр мусора,
-  построение дерева папок, поиск с ранжированием и frecency, расчёт раскладки, модели настроек
-  и данных, парсинг/валидация тем (`ThemePalette`, `AutoTheme`), экстрактор палитры со сцены
-  (`Theming/WallpaperColorExtractor`).
-- `src/HyprStart.App` — WPF: окно без рамки, `HotkeyService`, индексатор (`ShortcutScanner`,
-  `UwpAppEnumerator`, `IconCache`, `AppIndexService`), `ScreenSampler` (снимок кадра для
-  `auto`-темы), `BackdropBlur`, `SystemMonitor`, `ThemeService`, `PinsStore`/`UsageStore`,
-  трей, автозапуск.
+1. `dotnet build HyprStart.sln -c Release -warnaserror` on `windows-latest`
+2. `dotnet test tests\HyprStart.Core.Tests -c Release`
 
-Раскладка считается по `Screen.Bounds` (панель задач в автоскрытии), а не по `WorkingArea`.
+Pushing a tag (`v*`) additionally publishes the self-contained `win-x64` single-file build, packs
+it into `HyprStart-win-x64.zip` and attaches it to a GitHub Release.
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+---
+
+## Screenshots
+
+Drop images into [`assets/`](assets/) using the names below — the README picks them up as-is.
+
+| File | What to capture |
+| --- | --- |
+| `assets/overview.png` | The full overlay: pinned grid + frequent apps + media strip |
+| `assets/chat.png` | The MINI AI panel with a web-backed answer |
+| `assets/settings.png` | The settings window with the masked API key field |
+
+---
+
+## License
+
+No license file is included in this repository yet. Until one is added, the default
+copyright rules apply — open an issue if you need a specific license for your use case.

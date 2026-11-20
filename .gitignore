@@ -20,6 +20,9 @@ TestResults/
 coverage*.xml
 *.trx
 
+# Релизные артефакты (scripts/build-release.ps1)
+dist/
+
 # Временное и копии
 *.log
 *.bak

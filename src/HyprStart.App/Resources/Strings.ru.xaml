@@ -1,4 +1,4 @@
-﻿<!-- Русские строки интерфейса -->
+<!-- Русские строки интерфейса -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
@@ -59,7 +59,7 @@
     <sys:String x:Key="ChatInputHint">спроси ИИ · Tab — фокус, Enter — отправить</sys:String>
     <sys:String x:Key="ChatClear">Очистить</sys:String>
     <sys:String x:Key="ChatClearTooltip">Очистить чат (Ctrl+L)</sys:String>
-    <sys:String x:Key="ChatSetupHint">MINI AI пока не настроен: нажмите шестерёнку или Ctrl+, и укажите Base URL, API Key и Model (подойдёт DeepSeek, OpenAI, OpenRouter, Groq или локальная Ollama). Вместо ключа можно задать переменную окружения </sys:String>
+    <sys:String x:Key="ChatSetupHint">MINI AI пока не настроен: нажмите шестерёнку или Ctrl+, и укажите Base URL, API Key и Model (подойдёт DeepSeek, OpenAI, OpenRouter, Groq или локальная Ollama). Ключ берётся только из настроек - переменная окружения {0} намеренно игнорируется.</sys:String>
     <sys:String x:Key="ChatNoKeyOpensSettings">Без ключа отправить не получится - открываю настройки MINI AI.</sys:String>
     <sys:String x:Key="ChatWeatherUnavailable">Не удалось получить сводку погоды (Open-Meteo и wttr.in недоступны).</sys:String>
     <sys:String x:Key="ChatErrorPrefix">Ошибка: </sys:String>
@@ -116,7 +116,7 @@
     <sys:String x:Key="SettingsGeoUnknown">город ещё не определён - нажмите кнопку определения</sys:String>
     <sys:String x:Key="SettingsKeySetShort">Ключ задан.</sys:String>
     <sys:String x:Key="SettingsKeyShown">Ключ: {0}</sys:String>
-    <sys:String x:Key="SettingsKeyHidden">скрыт (наведите на поле, чтобы показать)</sys:String>
+    <sys:String x:Key="SettingsKeyHidden">скрыт — нажмите кнопку-глаз, чтобы показать</sys:String>
     <sys:String x:Key="SettingsHotkeyCapturePrompt">нажмите комбинацию...</sys:String>
     <sys:String x:Key="SettingsHotkeyUnsupported">эту клавишу использовать нельзя</sys:String>
     <sys:String x:Key="ChatClearToolTip">Очистить чат</sys:String>

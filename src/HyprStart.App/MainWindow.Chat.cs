@@ -34,7 +34,9 @@ public partial class MainWindow : Window
         var settings = _settings.Current;
         var options = new QuickChatOptions
         {
-            ApiKey = QuickChatOptions.ResolveApiKey(settings.ChatApiKey),
+            // Только ключ из настроек: системная переменная DEEPSEEK_API_KEY может
+            // принадлежать другому агенту, и подхватывать её молча нельзя.
+            ApiKey = QuickChatOptions.ResolveApiKey(settings.ChatApiKey, readEnv: _ => null),
             Model = string.IsNullOrWhiteSpace(settings.ChatModel) ? ChatEndpoint.DefaultModel : settings.ChatModel,
             BaseUrl = settings.ChatBaseUrl,
             ProxyUrl = settings.ChatProxy ?? string.Empty,
@@ -59,7 +61,8 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateChatSetupHint()
     {
-        bool configured = ChatEndpoint.IsConfigured(_settings.Current.ChatApiKey);
+        // readEnv: _ => null - ключ считаем заданным только из настроек, без системной переменной.
+        bool configured = ChatEndpoint.IsConfigured(_settings.Current.ChatApiKey, readEnv: _ => null);
 
         if (configured)
         {
@@ -79,7 +82,7 @@ public partial class MainWindow : Window
 
         var hint = new ChatLineVm(
             ChatRole.System,
-            Localizer.T("ChatSetupHint") + ChatEndpoint.EnvKeyName + ".",
+            string.Format(Localizer.T("ChatSetupHint"), ChatEndpoint.EnvKeyName),
             isNotice: true);
         hint.IsSetupHint = true;
 

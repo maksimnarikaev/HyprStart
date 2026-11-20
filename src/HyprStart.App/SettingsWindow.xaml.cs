@@ -33,8 +33,21 @@ public partial class SettingsWindow : Window
     /// <summary>Текущая комбинация хоткея, захваченная в поле.</summary>
     private HotkeySpec _hotkey;
 
+    /// <summary>Символ маски: ключ по умолчанию показан точками.</summary>
+    private const char KeyMaskChar = '\u2022';
+
+    /// <summary>
+    /// Реальный ключ. Поле ApiKeyBox по умолчанию показывает только точки, поэтому
+    /// значение живёт здесь: пользователь может нажать «Сохранить», не трогая поле,
+    /// и сохранённый ключ не превратится в маску.
+    /// </summary>
+    private string _apiKeyValue = string.Empty;
+
     /// <summary>Ключ показывается открытым текстом только по кнопке-глазу.</summary>
     private bool _keyRevealed;
+
+    /// <summary>Защита от рекурсии: подмена текста в маске не считается правкой.</summary>
+    private bool _keyMaskSuppressed;
 
     /// <summary>Язык, выбранный в окне: применяется сразу, чтобы редактор было видно.</summary>
     private string _pendingLanguage;
@@ -55,10 +68,10 @@ public partial class SettingsWindow : Window
             : store.Current.ChatBaseUrl;
         BaseUrlBox.ToolTip = Localizer.T("SettingsBaseUrlToolTip");
 
-        ApiKeyBox.Text = store.Current.ChatApiKey;
+        _apiKeyValue = store.Current.ChatApiKey ?? string.Empty;
         _keyRevealed = false;
-        MaskKey(_keyRevealed);
-        KeyHint.Text = DescribeKey(store.Current.ChatApiKey);
+        ApplyKeyMask();
+        KeyHint.Text = DescribeKey(_apiKeyValue);
 
         ModelBox.Text = string.IsNullOrWhiteSpace(store.Current.ChatModel)
             ? ChatEndpoint.DefaultModel
@@ -370,6 +383,30 @@ public partial class SettingsWindow : Window
     }
 
     
+    /// <summary>
+    /// Правка поля ключа. В скрытом режиме там точки — при первой же правке выбрасываем
+    /// их, иначе сохранённый ключ превратился бы в "••••••••sk-...".
+    /// </summary>
+    private void OnApiKeyTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_keyMaskSuppressed || _keyRevealed) return;
+
+        // Флаг снимаем только после ApplyKeyMask: она тоже пишет в Text
+        // и иначе вызвала бы этот обработчик повторно.
+        _keyMaskSuppressed = true;
+        try
+        {
+            _apiKeyValue = string.Empty;
+            _keyRevealed = true;
+            ApiKeyBox.Text = string.Empty;
+            ApplyKeyMask();
+        }
+        finally
+        {
+            _keyMaskSuppressed = false;
+        }
+    }
+
     private void OnThemeChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (ThemeBox.SelectedItem is not string name || string.IsNullOrWhiteSpace(name)) return;
@@ -411,20 +448,56 @@ public partial class SettingsWindow : Window
 
     private void OnRevealKey(object sender, RoutedEventArgs e)
     {
+        // Текст, который пользователь мог набрать в замаскированном режиме,
+        // забираем в _apiKeyValue - иначе переключение показа его потеряет.
+        CaptureEditedKey();
+
         _keyRevealed = !_keyRevealed;
-        MaskKey(_keyRevealed);
+        ApplyKeyMask();
         ApiKeyBox.CaretIndex = ApiKeyBox.Text.Length;
     }
 
     /// <summary>
-    /// Переключает показ ключа: поле остаётся TextBox (PasswordBox не умеет
-    /// показывать значение без замены контрола), поэтому меняем только подсказку.
+    /// Показывает либо реальный ключ, либо точки. Поле остаётся TextBox
+    /// (PasswordBox не умеет показывать значение без замены контрола),
+    /// поэтому маска - это подмена текста, а не отдельный контрол.
     /// </summary>
-    private void MaskKey(bool reveal)
+    private void ApplyKeyMask()
     {
-        ApiKeyBox.ToolTip = reveal
+        // Assigning Text raises TextChanged; the caller may already hold the flag,
+        // but OnRevealKey and the constructor call us without it.
+        bool guard = _keyMaskSuppressed;
+        _keyMaskSuppressed = true;
+        try
+        {
+            ApiKeyBox.Text = _keyRevealed ? _apiKeyValue : MaskOf(_apiKeyValue);
+        }
+        finally
+        {
+            _keyMaskSuppressed = guard;
+        }
+
+        ApiKeyBox.CaretIndex = ApiKeyBox.Text.Length;
+        ApiKeyBox.ToolTip = _keyRevealed
             ? Localizer.T("SettingsKeyShown")
             : Localizer.T("SettingsKeyHidden");
+        KeyHint.Text = DescribeKey(_apiKeyValue);
+    }
+
+    /// <summary>
+    /// Одна точка на символ ключа (не фиксированная длина): по маске видно,
+    /// задан ключ вообще или нет, но не видно его длину.
+    /// </summary>
+    private static string MaskOf(string? key)
+        => string.IsNullOrEmpty(key) ? string.Empty : new string(KeyMaskChar, key.Length);
+
+    /// <summary>
+    /// Забирает набранное в поле в <see cref="_apiKeyValue"/>, если это не маска.
+    /// Пока ключ скрыт, поле содержит точки - их нельзя принять за настоящий ключ.
+    /// </summary>
+    private void CaptureEditedKey()
+    {
+        if (_keyRevealed) _apiKeyValue = ApiKeyBox.Text.Trim();
     }
 
     private void OnDetectCity(object sender, RoutedEventArgs e)
@@ -482,7 +555,10 @@ public partial class SettingsWindow : Window
 
         var baseUrl = ChatEndpoint.NormalizeBaseUrl(BaseUrlBox.Text);
         settings.ChatBaseUrl = baseUrl.Length == 0 ? ChatEndpoint.DefaultBaseUrl : baseUrl;
-        settings.ChatApiKey = ApiKeyBox.Text.Trim();
+
+        // Ключ берём из _apiKeyValue, а не из поля: в скрытом режиме там точки.
+        CaptureEditedKey();
+        settings.ChatApiKey = _apiKeyValue.Trim();
         settings.ChatModel = string.IsNullOrWhiteSpace(ModelBox.Text)
             ? ChatEndpoint.DefaultModel
             : ModelBox.Text.Trim();

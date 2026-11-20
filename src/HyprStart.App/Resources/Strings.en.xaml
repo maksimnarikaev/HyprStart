@@ -1,4 +1,4 @@
-﻿<!-- English UI strings (default for GitHub) -->
+<!-- English UI strings (default for GitHub) -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
@@ -59,7 +59,7 @@
     <sys:String x:Key="ChatInputHint">ask AI · Tab — focus, Enter — send</sys:String>
     <sys:String x:Key="ChatClear">Clear</sys:String>
     <sys:String x:Key="ChatClearTooltip">Clear chat (Ctrl+L)</sys:String>
-    <sys:String x:Key="ChatSetupHint">MINI AI is not configured yet: press the gear or Ctrl+, and set Base URL, API Key and Model (DeepSeek, OpenAI, OpenRouter, Groq or a local Ollama will do). Instead of a key you can set the environment variable </sys:String>
+    <sys:String x:Key="ChatSetupHint">MINI AI is not configured yet: press the gear or Ctrl+, and set Base URL, API Key and Model (DeepSeek, OpenAI, OpenRouter, Groq or a local Ollama will do). The key is read from settings only - the environment variable {0} is deliberately ignored.</sys:String>
     <sys:String x:Key="ChatNoKeyOpensSettings">Cannot send without a key - opening MINI AI settings.</sys:String>
     <sys:String x:Key="ChatWeatherUnavailable">Could not get the weather summary (Open-Meteo and wttr.in are unreachable).</sys:String>
     <sys:String x:Key="ChatErrorPrefix">Error: </sys:String>
@@ -116,7 +116,7 @@
     <sys:String x:Key="SettingsGeoUnknown">city is not detected yet - press the detect button</sys:String>
     <sys:String x:Key="SettingsKeySetShort">Key is set.</sys:String>
     <sys:String x:Key="SettingsKeyShown">Key: {0}</sys:String>
-    <sys:String x:Key="SettingsKeyHidden">hidden (hover the field to reveal)</sys:String>
+    <sys:String x:Key="SettingsKeyHidden">hidden — press the eye button to reveal</sys:String>
     <sys:String x:Key="SettingsHotkeyCapturePrompt">press the combination...</sys:String>
     <sys:String x:Key="SettingsHotkeyUnsupported">this key cannot be used</sys:String>
     <sys:String x:Key="ChatClearToolTip">Clear chat</sys:String>
