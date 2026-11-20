@@ -1020,7 +1020,17 @@ public partial class MainWindow : Window
         var container = FindAncestor<ContentPresenter>(e.OriginalSource as DependencyObject);
         if (container?.DataContext is not FrequentVm vm) return;
 
-        var menu = new ContextMenu { Style = (Style)FindResource("DarkContextMenuStyle") };
+        // Меню собираем теми же ресурсами, что закреплённые и список приложений:
+        // ключа "DarkContextMenuStyle" не существует, FindResource на нём бросал
+        // ResourceReferenceKeyNotFoundException, и ПКМ в «частом» убивал процесс.
+        var menu = new ContextMenu
+        {
+            Style = ContextMenuStyle,
+            Background = (MediaBrush)FindResource("GlassTintBrush"),
+            Foreground = (MediaBrush)FindResource("TextBrush"),
+            FontFamily = (System.Windows.Media.FontFamily)FindResource("MonoFont"),
+            FontSize = 12,
+        };
         menu.Items.Add(MenuAction("MenuLaunch", () => Launch(vm.Entry)));
         menu.Items.Add(MenuAction("MenuLaunchAsAdmin", () => LaunchAdmin(vm.Entry)));
         menu.Items.Add(MenuAction(_pins.Contains(vm.Entry) ? "MenuUnpin" : "MenuPin", () =>
@@ -1035,7 +1045,8 @@ public partial class MainWindow : Window
             RefreshFrequent();
         }));
 
-        menu.PlacementTarget = e.OriginalSource as UIElement;
+        if (FindAncestor<Border>(e.OriginalSource as DependencyObject) is { } anchor)
+            anchor.ContextMenu = menu;
         menu.IsOpen = true;
         e.Handled = true;
     }

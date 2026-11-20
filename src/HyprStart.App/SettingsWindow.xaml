@@ -45,10 +45,14 @@
                                         Background="{DynamicResource MenuBrush}"
                                         BorderBrush="{DynamicResource PillBorderBrush}" BorderThickness="1"
                                         Padding="4">
+                                    <!-- Стиль скроллбара объявлен на Border, а не на самом ScrollViewer:
+                                         неявный стиль из ScrollViewer.Resources валидируется против
+                                         собственного типа элемента (ScrollViewer), и WPF падал с
+                                         XamlParseException "TargetType ScrollBar не соответствует ScrollViewer". -->
+                                    <Border.Resources>
+                                        <Style TargetType="ScrollBar" BasedOn="{StaticResource DarkScrollBarStyle}" />
+                                    </Border.Resources>
                                     <ScrollViewer MaxHeight="220">
-                                        <ScrollViewer.Resources>
-                                            <Style TargetType="ScrollBar" BasedOn="{StaticResource DarkScrollBarStyle}" />
-                                        </ScrollViewer.Resources>
                                         <ItemsPresenter />
                                     </ScrollViewer>
                                 </Border>

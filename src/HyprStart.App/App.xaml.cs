@@ -39,6 +39,23 @@ public partial class App : System.Windows.Application
         if (headless) NativeMethods.AllocConsole();
         AppLog.Init(echo: headless);
 
+        // Без этих обработчиков любое исключение в UI-потоке молча убивало процесс:
+        // в логе не оставалось ни строки, и краши вроде ПКМ по «частому» приходилось
+        // искать в Event Log. Теперь падение всегда попадает в app.log.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            AppLog.Error("ui: необработанное исключение", args.Exception);
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            AppLog.Error("fatal: необработанное исключение", args.ExceptionObject as Exception);
+        };
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            AppLog.Error("task: необработанное исключение", args.Exception);
+            args.SetObserved();
+        };
+
         // Диагностика веб-поиска идёт в тот же лог: иначе сбои r.jina.ai видны только
         // как «web пусто» без причины.
         QuickChatClient.WebSearchLog = message => AppLog.Write("web: " + message);
