@@ -57,7 +57,7 @@ powershell -ExecutionPolicy Bypass -File dotnet-install.ps1 -Channel 8.0 -Instal
 # источник NuGet нужен для WinRT-проекции (GSMTC) и xunit
 & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" nuget add source https://api.nuget.org/v3/index.json -n nuget.org
 
-cd C:\Users\Maksim\HyprStart
+cd C:\path\to\HyprStart
 & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" build HyprStart.sln -c Debug
 & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" test tests\HyprStart.Core.Tests   # 233 теста
 

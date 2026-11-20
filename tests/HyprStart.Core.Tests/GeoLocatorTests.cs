@@ -8,14 +8,14 @@ public class GeoLocatorTests
     [Fact]
     public void ParseIpApi_ReadsCityAndCoordinates()
     {
-        const string json = "{\"ip\":\"1.2.3.4\",\"city\":\"Vladikavkaz\",\"latitude\":43.0367,\"longitude\":44.6678,\"country\":\"RU\"}";
+        const string json = "{\"ip\":\"1.2.3.4\",\"city\":\"Berlin\",\"latitude\":52.52,\"longitude\":13.405,\"country\":\"DE\"}";
 
         var point = GeoLocator.ParseIpApi(json);
 
         Assert.NotNull(point);
-        Assert.Equal("Vladikavkaz", point!.City);
-        Assert.Equal(43.0367, point.Latitude, 4);
-        Assert.Equal(44.6678, point.Longitude, 4);
+        Assert.Equal("Berlin", point!.City);
+        Assert.Equal(52.52, point.Latitude, 4);
+        Assert.Equal(13.405, point.Longitude, 4);
     }
 
     [Fact]

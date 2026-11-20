@@ -93,7 +93,7 @@
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                         <TextBox x:Name="SearchBox" Style="{StaticResource SearchBoxStyle}"
                                  Margin="18,0,0,0" TextChanged="OnSearchTextChanged" />
-                        <TextBlock x:Name="SearchPlaceholder" Text="поиск, папки, 2+2*2"
+                        <TextBlock x:Name="SearchPlaceholder" Text="{DynamicResource SearchPlaceholder}"
                                    Margin="18,0,0,0" VerticalAlignment="Center"
                                    FontFamily="{StaticResource MonoFont}" FontSize="13"
                                    Foreground="{DynamicResource MutedBrush}" Opacity="0.75"
@@ -192,7 +192,7 @@
 
                     <TextBlock x:Name="PinsHint" Grid.Row="1"
                                Style="{StaticResource PlaceholderStyle}"
-                               Text="пусто · ПКМ по приложению в списке → «Закрепить», «+ Папка» в заголовке создаёт папку"
+                               Text="{DynamicResource PinnedEmptyHint}"
                                VerticalAlignment="Top" />
                 </Grid>
 
@@ -203,7 +203,7 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button Content="‹ Назад" Style="{StaticResource QuickButtonStyle}" Click="OnFolderBack" />
+                        <Button Content="{DynamicResource FolderBack}" Style="{StaticResource QuickButtonStyle}" Click="OnFolderBack" />
                         <TextBlock x:Name="FolderTitle" VerticalAlignment="Center" Margin="10,0,0,0"
                                    FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
                     </StackPanel>
@@ -246,7 +246,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <TextBlock x:Name="FrequentHint" Style="{StaticResource PlaceholderStyle}"
-                           Text="здесь появятся приложения, которые ты запускаешь чаще всего" />
+                           Text="{DynamicResource FrequentEmptyHint}" />
             </Grid>
         </HeaderedContentControl>
 
@@ -256,7 +256,7 @@
                 <!-- Настройки: универсальный клиент MINI AI, хоткей, тема, автозапуск -->
                 <Button Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="12"
                         Style="{StaticResource QuickGlyphButtonStyle}" Padding="6,2" Margin="0"
-                        ToolTip="Настройки (Ctrl+,)"
+                        ToolTip="{DynamicResource SettingsToolTip}"
                         Click="OnOpenSettings" />
             </HeaderedContentControl.Tag>            <Grid>
                 <Grid.RowDefinitions>
@@ -267,30 +267,30 @@
 
                 <StackPanel>
                     <UniformGrid Columns="2">
-                        <Button Style="{StaticResource QuickButtonStyle}" Content="⤓ Загрузки" Click="OnQuickDownloads" />
-                        <Button Style="{StaticResource QuickButtonStyle}" Content="🗀 Проводник" Click="OnQuickExplorer" />
-                        <Button Style="{StaticResource QuickButtonStyle}" Content="⚙ Параметры" Click="OnQuickSettings" />
-                        <Button Style="{StaticResource QuickButtonStyle}" Content="&gt;_ Терминал" Click="OnQuickTerminal" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="{DynamicResource QuickDownloads}" Click="OnQuickDownloads" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="{DynamicResource QuickExplorer}" Click="OnQuickExplorer" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="{DynamicResource QuickSettings}" Click="OnQuickSettings" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="{DynamicResource QuickTerminal}" Click="OnQuickTerminal" />
                     </UniformGrid>
 
                     <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Margin="0,2,0,6" />
 
-                    <TextBlock Text="ПИТАНИЕ" Style="{StaticResource SectionHeaderStyle}" Margin="2,0,0,4" />
+                    <TextBlock Text="{DynamicResource PowerHeader}" Style="{StaticResource SectionHeaderStyle}" Margin="2,0,0,4" />
                     <UniformGrid Columns="3">
-                        <Button Style="{StaticResource QuickButtonStyle}" Content="Сон" Click="OnSleep" />
-                        <Button Style="{StaticResource QuickButtonStyle}" Content="Перезагрузка" Click="OnRestart" />
-                        <Button Style="{StaticResource QuickButtonStyle}" Content="Выключение" Click="OnShutdown" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="{DynamicResource PowerSleep}" Click="OnSleep" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="{DynamicResource PowerRestart}" Click="OnRestart" />
+                        <Button Style="{StaticResource QuickButtonStyle}" Content="{DynamicResource PowerShutdown}" Click="OnShutdown" />
                     </UniformGrid>
 
                     <Border x:Name="PowerConfirm" Visibility="Collapsed" Margin="0,10,0,0"
                             Background="{DynamicResource MenuBrush}" BorderBrush="{DynamicResource PanelBorderGradient}"
                             BorderThickness="1" CornerRadius="8" Padding="10,8">
                         <StackPanel>
-                            <TextBlock x:Name="PowerConfirmText" Text="Выключить компьютер?" FontSize="11.5"
+                            <TextBlock x:Name="PowerConfirmText" Text="{DynamicResource PowerConfirmShutdown}" FontSize="11.5"
                                        Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" />
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <Button Content="Да" Style="{StaticResource QuickButtonStyle}" Click="OnPowerConfirm" />
-                                <Button Content="Отмена" Style="{StaticResource QuickButtonStyle}" Click="OnPowerCancel" />
+                                <Button Content="{DynamicResource PowerYes}" Style="{StaticResource QuickButtonStyle}" Click="OnPowerConfirm" />
+                                <Button Content="{DynamicResource PowerNo}" Style="{StaticResource QuickButtonStyle}" Click="OnPowerCancel" />
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -356,7 +356,7 @@
                 <Border Style="{StaticResource IslandShadowStyle}" />
                 <Border Style="{StaticResource IslandStyle}" Padding="12,3">
                     <TextBlock Style="{StaticResource PillTextStyle}" Foreground="{DynamicResource MutedBrush}"
-                               Text="↑↓ выбор · Enter запуск · Alt+1..9 пины · ПКМ закрепить · F5 обновить · Esc закрыть" />
+                               Text="{DynamicResource HotkeysHint}" />
                 </Border>
             </Grid>
 
@@ -366,8 +366,8 @@
                 <Border Style="{StaticResource IslandStyle}">
                     <StackPanel Orientation="Horizontal">
                         <Border x:Name="ThemePill" Style="{StaticResource PillStyle}" Cursor="Hand"
-                                ToolTip="Переключить тему (клик)">
-                            <TextBlock x:Name="ThemePillText" Style="{StaticResource PillTextStyle}" Text="тема" />
+                                ToolTip="{DynamicResource ThemePillToolTip}">
+                            <TextBlock x:Name="ThemePillText" Style="{StaticResource PillTextStyle}" Text="{DynamicResource ThemePillText}" />
                         </Border>
                         <Border Style="{StaticResource PillStyle}" Margin="0">
                             <TextBlock x:Name="PillClock" Style="{StaticResource PillTextStyle}" Text="--:--:--" />
@@ -382,13 +382,13 @@
             <HeaderedContentControl.Tag>
                 <!-- кнопка очистки контекста в шапке карточки -->
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="Очистить" Style="{StaticResource QuickButtonStyle}"
+                    <Button Content="{DynamicResource ChatClear}" Style="{StaticResource QuickButtonStyle}"
                             FontSize="11" Margin="0,0,6,0" Padding="10,3"
-                            ToolTip="Очистить чат (Ctrl+L)"
+                            ToolTip="{DynamicResource ChatClearToolTip}"
                             Click="OnChatClear" />
                     <Button Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="12"
                             Style="{StaticResource QuickGlyphButtonStyle}" Padding="6,2" Margin="0"
-                            ToolTip="Настройки MINI AI (Ctrl+,)"
+                            ToolTip="{DynamicResource ChatSettingsToolTip}"
                             Click="OnOpenSettings" />
                 </StackPanel>
             </HeaderedContentControl.Tag>
@@ -424,7 +424,7 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <TextBlock x:Name="ChatHint" Text="спроси ИИ · Tab — фокус, Enter — отправить"
+                <TextBlock x:Name="ChatHint" Text="{DynamicResource ChatHint}"
                            Style="{StaticResource PlaceholderStyle}" FontSize="10.5"
                            VerticalAlignment="Top" IsHitTestVisible="False" />
 
@@ -441,7 +441,7 @@
                         <TextBlock x:Name="ChatPlaceholder" IsHitTestVisible="False"
                                    Style="{StaticResource PlaceholderStyle}" FontSize="10.5"
                                    Margin="0,1,0,0" VerticalAlignment="Center"
-                                   Text="Спросить ИИ…" TextTrimming="CharacterEllipsis" />
+                                   Text="{DynamicResource ChatPlaceholder}" TextTrimming="CharacterEllipsis" />
                     </Grid>
                 </Border>
             </Grid>

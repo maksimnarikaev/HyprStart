@@ -17,15 +17,16 @@ internal sealed class TrayService : IDisposable
         _notifyIcon = new NotifyIcon
         {
             Icon = _icon,
-            Text = "HyprStart — меню в стиле Hyprland",
+            Text = Localizer.T("TrayTooltip"),
             Visible = false,
         };
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add(new ToolStripMenuItem("Открыть  (Win)", null, (_, _) => overlay.Toggle()));
+        menu.Items.Add(new ToolStripMenuItem(Localizer.T("TrayOpen"), null, (_, _) => overlay.Toggle()));
 
         // Подменю «Тема → …»: применяется сразу, без перезапуска.
-        var themeMenu = new ToolStripMenuItem("Тема");
+        // Имена тем не переводятся: по ним же синхронизируются галочки.
+        var themeMenu = new ToolStripMenuItem(Localizer.T("TrayTheme"));
 
         foreach (var theme in themes.Themes)
         {
@@ -61,7 +62,7 @@ internal sealed class TrayService : IDisposable
         };
 
         themeMenu.DropDownItems.Add(new ToolStripSeparator());
-        themeMenu.DropDownItems.Add(new ToolStripMenuItem("Открыть папку тем", null, (_, _) =>
+        themeMenu.DropDownItems.Add(new ToolStripMenuItem(Localizer.T("TrayOpenThemeFolder"), null, (_, _) =>
         {
             try
             {
@@ -75,7 +76,7 @@ internal sealed class TrayService : IDisposable
 
         menu.Items.Add(themeMenu);
 
-        _autostartItem = new ToolStripMenuItem("Автозапуск")
+        _autostartItem = new ToolStripMenuItem(Localizer.T("TrayAutostart"))
         {
             CheckOnClick = true,
             Checked = AutostartService.IsEnabled(),
@@ -88,7 +89,7 @@ internal sealed class TrayService : IDisposable
         menu.Items.Add(_autostartItem);
 
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Выход", null, (_, _) => shutdown()));
+        menu.Items.Add(new ToolStripMenuItem(Localizer.T("TrayExit"), null, (_, _) => shutdown()));
 
         _notifyIcon.ContextMenuStrip = menu;
         _notifyIcon.DoubleClick += (_, _) => overlay.Toggle();

@@ -157,6 +157,19 @@ public sealed class SettingsStore
             changed = true;
             AppLog.Write("settings: миграция v5->v6 выполнена (base URL, погода, скрытие чата)");
         }
+
+        if (settings.Version < 7)
+        {
+            // v6 -> v7: двуязычный интерфейс. Пустая строка = "определить по культуре ОС":
+            // русская система получает RU, все остальные - EN (дефолт для GitHub).
+            // Сохранённый язык пользователя не трогаем, поэтому сюда попадает только пустое значение.
+            settings.Language = Localizer.Normalize(settings.Language);
+
+            settings.Version = 7;
+            changed = true;
+            AppLog.Write("settings: миграция v6->v7 выполнена (язык интерфейса)");
+        }
+
         return changed;
     }
 

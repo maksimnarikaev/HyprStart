@@ -141,6 +141,6 @@ public class ChatEndpointTests
     {
         var settings = new WeatherLocationSettings();
 
-        Assert.Equal("погода", settings.Describe());
+        Assert.Equal("weather", settings.Describe());
     }
 }

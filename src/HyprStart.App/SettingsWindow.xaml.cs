@@ -33,6 +33,9 @@ public partial class SettingsWindow : Window
     /// <summary>Ключ показывается открытым текстом только по кнопке-глазу.</summary>
     private bool _keyRevealed;
 
+    /// <summary>Язык, выбранный в окне: применяется сразу, чтобы редактор было видно.</summary>
+    private string _pendingLanguage;
+
     public SettingsWindow(SettingsStore store, ThemeService themes)
     {
         _store = store;
@@ -47,7 +50,7 @@ public partial class SettingsWindow : Window
         BaseUrlBox.Text = string.IsNullOrWhiteSpace(store.Current.ChatBaseUrl)
             ? ChatEndpoint.DefaultBaseUrl
             : store.Current.ChatBaseUrl;
-        BaseUrlBox.ToolTip = "Например https://api.deepseek.com, https://openrouter.ai/api/v1, http://localhost:11434/v1";
+        BaseUrlBox.ToolTip = Localizer.T("SettingsBaseUrlToolTip");
 
         ApiKeyBox.Text = store.Current.ChatApiKey;
         _keyRevealed = false;
@@ -57,14 +60,14 @@ public partial class SettingsWindow : Window
         ModelBox.Text = string.IsNullOrWhiteSpace(store.Current.ChatModel)
             ? ChatEndpoint.DefaultModel
             : store.Current.ChatModel;
-        ModelBox.ToolTip = "deepseek-chat, gpt-4o-mini, llama3, ... - зависит от провайдера";
+        ModelBox.ToolTip = Localizer.T("SettingsModelToolTip");
 
         HideChatBox.IsChecked = store.Current.HideChatPanel;
 
         var weather = store.Current.Weather ??= new WeatherLocationSettings();
         GeoHint.Text = weather.HasCoordinates
-            ? $"сейчас: {weather.Describe()}"
-            : "город ещё не определён - нажмите кнопку определения по IP";
+            ? Localizer.Format("SettingsGeoCached", weather.Describe(Localizer.T("WeatherFallbackLabel")))
+            : Localizer.T("SettingsGeoUnknown");
 
         CityBox.Text = weather.City;
         LatBox.Text = weather.HasCoordinates
@@ -84,6 +87,12 @@ public partial class SettingsWindow : Window
 
         ThemeBox.SelectedItem = selected ?? ThemeBox.Items[0];
         ThemeBox.SelectionChanged += OnThemeChanged;
+
+        // Язык: пустая строка в настройках - автоопределение по культуре ОС.
+        foreach (var tag in Localizer.Supported) LanguageBox.Items.Add(Localizer.DisplayName(tag));
+        _pendingLanguage = Localizer.Normalize(store.Current.Language);
+        SelectLanguage(_pendingLanguage);
+        LanguageBox.SelectionChanged += OnLanguageChanged;
 
         try
         {
@@ -106,11 +115,11 @@ public partial class SettingsWindow : Window
         if (!string.IsNullOrEmpty(key))
         {
             return key.Length <= 8
-                ? "Ключ задан."
-                : $"Ключ задан ({key[..4]}…{key[^4..]}).";
+                ? Localizer.T("SettingsKeySet")
+                : Localizer.Format("SettingsKeySetShort", key[..4], key[^4..]);
         }
 
-        return "Ключ не задан - панель MINI AI покажет подсказку вместо ошибки.";
+        return Localizer.T("SettingsKeyMissing");
     }
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
@@ -131,7 +140,7 @@ public partial class SettingsWindow : Window
 
     private void OnHotkeyFocus(object sender, RoutedEventArgs e)
     {
-        HotkeyBox.Text = "нажмите комбинацию…";
+        HotkeyBox.Text = Localizer.T("SettingsHotkeyCapturePrompt");
         HotkeyBox.Foreground = (MediaBrush)FindResource("AccentBrush");
     }
 
@@ -168,7 +177,7 @@ public partial class SettingsWindow : Window
         // Глобальный хоткей без модификатора перехватил бы всю клавиатуру системы.
         if (mods == 0)
         {
-            HotkeyBox.Text = "нужен модификатор";
+            HotkeyBox.Text = Localizer.T("SettingsHotkeyNeedModifier");
             return;
         }
 
@@ -176,7 +185,7 @@ public partial class SettingsWindow : Window
         var built = HotkeySpec.FromKey(mods, vk);
         if (built is null)
         {
-            HotkeyBox.Text = "клавиша не подходит";
+            HotkeyBox.Text = Localizer.T("SettingsHotkeyUnsupported");
             return;
         }
 
@@ -208,6 +217,34 @@ public partial class SettingsWindow : Window
         }
     }
 
+    /// <summary>Смена языка: сразу переключаем словарь, чтобы окно перерисовалось на месте.</summary>
+    private void OnLanguageChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (LanguageBox.SelectedItem is not string label) return;
+
+        var tag = Localizer.TagForLabel(label);
+        if (string.IsNullOrEmpty(tag) || tag == _pendingLanguage) return;
+
+        _pendingLanguage = tag;
+        Localizer.Apply(tag);
+    }
+
+    /// <summary>Выставляет в списке пункт, соответствующий тегу языка.</summary>
+    private void SelectLanguage(string tag)
+    {
+        var label = Localizer.DisplayName(tag);
+        foreach (var item in LanguageBox.Items)
+        {
+            if (item is string s && s == label)
+            {
+                LanguageBox.SelectedItem = s;
+                return;
+            }
+        }
+
+        if (LanguageBox.Items.Count > 0) LanguageBox.SelectedIndex = 0;
+    }
+
     private void OnRevealKey(object sender, RoutedEventArgs e)
     {
         _keyRevealed = !_keyRevealed;
@@ -222,33 +259,33 @@ public partial class SettingsWindow : Window
     private void MaskKey(bool reveal)
     {
         ApiKeyBox.ToolTip = reveal
-            ? "Ключ виден. Нажмите кнопку-глаз, чтобы скрыть."
-            : "Ключ хранится в settings.json и уходит только провайдеру из Base URL.";
+            ? Localizer.T("SettingsKeyShown")
+            : Localizer.T("SettingsKeyHidden");
     }
 
     private void OnDetectCity(object sender, RoutedEventArgs e)
     {
         DetectButton.IsEnabled = false;
-        GeoHint.Text = "определяю по IP…";
+        GeoHint.Text = Localizer.T("SettingsGeoDetecting");
 
         try
         {
             var point = GeoLocator.Detect();
             if (point is null)
             {
-                GeoHint.Text = "не удалось определить (нет сети) - введите город и координаты вручную";
+                GeoHint.Text = Localizer.T("SettingsGeoOffline");
                 return;
             }
 
             CityBox.Text = point.City;
             LatBox.Text = point.Latitude.ToString("0.####", CultureInfo.InvariantCulture);
             LonBox.Text = point.Longitude.ToString("0.####", CultureInfo.InvariantCulture);
-            GeoHint.Text = $"определено: {point.City} - нажмите Сохранить";
+            GeoHint.Text = Localizer.Format("SettingsGeoDetected", point.City);
         }
         catch (Exception ex)
         {
             AppLog.Error("settings: геолокация не удалась", ex);
-            GeoHint.Text = "ошибка определения - введите координаты вручную";
+            GeoHint.Text = Localizer.T("SettingsGeoFailed");
         }
         finally
         {
@@ -289,6 +326,7 @@ public partial class SettingsWindow : Window
 
         settings.Hotkey = _hotkey.Describe();
         settings.Theme = string.IsNullOrWhiteSpace(_pendingTheme) ? settings.Theme : _pendingTheme;
+        settings.Language = Localizer.Normalize(_pendingLanguage);
 
         var weather = settings.Weather ??= new WeatherLocationSettings();
         var city = CityBox.Text.Trim();
@@ -320,7 +358,7 @@ public partial class SettingsWindow : Window
         AppLog.Write(
             $"settings: сохранены (base={settings.ChatBaseUrl}, model={settings.ChatModel}, " +
             $"hotkey={settings.Hotkey}, theme={settings.Theme}, чат скрыт={settings.HideChatPanel}, " +
-            $"погода={weather.Describe()})");
+            $"погода={weather.Describe(Localizer.T("WeatherFallbackLabel"))})");
 
         Saved?.Invoke();
         Close();

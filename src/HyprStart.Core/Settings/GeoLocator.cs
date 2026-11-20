@@ -33,7 +33,7 @@ public static class GeoLocator
     private static readonly Regex NumberRegex = new(@"-?\d+(?:\.\d+)?", RegexOptions.Compiled);
 
     /// <summary>
-    /// Разбор ответа ipapi.co: <c>{"city":"Vladikavkaz","latitude":43.03,"longitude":44.68,...}</c>
+    /// Разбор ответа ipapi.co: <c>{"city":"Berlin","latitude":52.52,"longitude":13.40,...}</c>
     /// </summary>
     public static GeoPoint? ParseIpApi(string? json)
         => ParseFlat(json, "\"city\"", "\"latitude\"", "\"longitude\"");

@@ -337,10 +337,10 @@ public class ChatContextTests
     [Fact]
     public void BuildSystemPrompt_CarriesDateAndCity()
     {
-        string prompt = ChatContext.BuildSystemPrompt(QuickChatOptions.SystemPrompt, new DateTime(2026, 11, 19), "Владикавказ");
+        string prompt = ChatContext.BuildSystemPrompt(QuickChatOptions.SystemPrompt, new DateTime(2026, 11, 19), "Berlin");
 
         Assert.Contains("2026-11-19", prompt);
-        Assert.Contains("Владикавказ", prompt);
+        Assert.Contains("Berlin", prompt);
         Assert.Contains(QuickChatOptions.SystemPrompt, prompt);
     }
 
@@ -368,7 +368,7 @@ public class ChatContextTests
     [Fact]
     public void BuildWeatherPrompt_CarriesSummaryAndDate()
     {
-        string prompt = ChatContext.BuildWeatherPrompt(QuickChatOptions.SystemPrompt, new DateTime(2026, 11, 19), "Владикавказ", "summary-marker");
+        string prompt = ChatContext.BuildWeatherPrompt(QuickChatOptions.SystemPrompt, new DateTime(2026, 11, 19), "Berlin", "summary-marker");
 
         Assert.Contains("summary-marker", prompt);
         Assert.Contains("2026-11-19", prompt);
@@ -377,9 +377,9 @@ public class ChatContextTests
     [Fact]
     public void WeatherUrl_UsesShortFormat()
     {
-        string url = ChatContext.WeatherUrl("Vladikavkaz");
+        string url = ChatContext.WeatherUrl("Berlin");
 
-        Assert.Equal("https://wttr.in/Vladikavkaz?format=3&lang=ru", url);
+        Assert.Equal("https://wttr.in/Berlin?format=3&lang=ru", url);
     }
 }
 

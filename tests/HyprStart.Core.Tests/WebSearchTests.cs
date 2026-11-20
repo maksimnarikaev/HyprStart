@@ -17,7 +17,7 @@ public class WebSearchTests
         [1. Курс доллара **сегодня**](https://duckduckgo.com/l/?uddg=x)
         Официальный курс USD к рублю на 19.11.2026 & прогноз ЦБ.
 
-        [2. Погода во Владикавказе](https://duckduckgo.com/l/?uddg=y)
+        [2. Погода в Berlin](https://duckduckgo.com/l/?uddg=y)
         Сейчас +7°C, облачно, ветер 3 м/с.
 
         [3. Новости технологий](https://duckduckgo.com/l/?uddg=z)
@@ -36,7 +36,7 @@ public class WebSearchTests
         Assert.Contains("Курс доллара", results[0].Title);
         Assert.Contains("сегодня", results[0].Title);
         Assert.Contains("прогноз", results[0].Snippet);
-        Assert.Contains("Погода во Владикавказе", results[1].Title);
+        Assert.Contains("Погода в Berlin", results[1].Title);
         Assert.Contains("Новости технологий", results[2].Title);
 
         // Ссылка нужна, чтобы затем выкачать саму страницу: без неё модель видит только заголовок.
@@ -109,7 +109,7 @@ public class WebSearchTests
     [Fact]
     public void WeatherUrl_DefaultIsNeutral_NotTiedToAuthorsCity()
     {
-        // Портативность: дефолт не должен быть координатами Владикавказа (43.02, 44.68).
+        // Портативность: дефолт не привязан к городу автора (43.02, 44.68).
         Assert.DoesNotContain("latitude=43.02", WebSearch.WeatherUrl);
         Assert.DoesNotContain("longitude=44.68", WebSearch.WeatherUrl);
         Assert.Contains("latitude=" + WebSearch.DefaultWeatherLatitude.ToString(CultureInfo.InvariantCulture), WebSearch.WeatherUrl);

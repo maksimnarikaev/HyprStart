@@ -110,12 +110,19 @@ public sealed class WeatherLocationSettings
     /// <summary>true, если координаты пригодны для запроса погоды.</summary>
     public bool HasCoordinates => ChatEndpoint.IsValidCoordinate(Latitude, Longitude);
 
-    /// <summary>Подпись для polybar: город, иначе координаты, иначе «погода».</summary>
-    public string Describe()
+    /// <summary>
+    /// Подпись для polybar: город, иначе координаты, иначе нейтральное «weather».
+    /// Core не знает про словари UI, поэтому подпись по умолчанию не зависит от языка:
+    /// окно настроек подставляет свой перевод через <see cref="Describe(string)"/>.
+    /// </summary>
+    public string Describe() => Describe("weather");
+
+    /// <summary>То же, но с подписью по умолчанию из словаря UI.</summary>
+    public string Describe(string fallback)
     {
         if (!string.IsNullOrWhiteSpace(City)) return City.Trim();
         return HasCoordinates
             ? string.Format(CultureInfo.InvariantCulture, "{0:0.##}, {1:0.##}", Latitude, Longitude)
-            : "погода";
+            : fallback;
     }
 }

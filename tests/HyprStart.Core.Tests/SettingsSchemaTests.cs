@@ -19,9 +19,9 @@ public class SettingsSchemaTests
     };
 
     [Fact]
-    public void Version_IsSix()
+    public void Version_IsSeven()
     {
-        Assert.Equal(6, SettingsSchema.Version);
+        Assert.Equal(7, SettingsSchema.Version);
     }
 
     [Fact]

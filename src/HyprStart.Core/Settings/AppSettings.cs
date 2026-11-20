@@ -99,6 +99,12 @@ public sealed class AppSettings
     /// </summary>
     public string ChatBaseUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Язык интерфейса: "en", "ru" или пустая строка - определить по культуре системы
+    /// (RU для русскоязычной ОС, EN для всех остальных). EN - дефолт для публикации на GitHub.
+    /// </summary>
+    public string Language { get; set; } = string.Empty;
+
     /// <summary>Скрыть панель MINI AI целиком: чат не грузит сеть и не занимает место в раскладке.</summary>
     public bool HideChatPanel { get; set; }
 
@@ -117,6 +123,7 @@ public static class SettingsSchema
     /// <summary>
     /// 1 — первая версия (перехват Win включён, хоткея нет).
     /// 2 — хоткей Alt+Space, перехват Win выключен по умолчанию.
+    /// 7 - двуязычный интерфейс: поле Language (пусто - автоопределение по культуре ОС).
     /// </summary>
-    public const int Version = 6;
+    public const int Version = 7;
 }

@@ -165,9 +165,9 @@ public sealed class QuickChatClient
         CancellationToken cancellationToken = default)
     {
         if (messages is null || messages.Count == 0)
-            return ChatStreamResult.Failed("Пустой запрос.");
+            return ChatStreamResult.Failed(ChatMessages.Active.EmptyRequest);
         if (!HasApiKey)
-            return ChatStreamResult.Failed("Нет ключа: задай DEEPSEEK_API_KEY или chatApiKey в settings.json.");
+            return ChatStreamResult.Failed(ChatMessages.Active.MissingKey);
         onDelta ??= _ => { };
 
         string body = BuildRequestBody(messages, Options.Model);
@@ -194,7 +194,7 @@ public sealed class QuickChatClient
                 {
                     string raw = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     string reason = SseParser.ReadErrorMessage(SseParser.ReadDataPayload(raw))
-                                    ?? (string.IsNullOrWhiteSpace(raw) ? response.ReasonPhrase ?? "ошибка" : raw.Trim());
+                                    ?? (string.IsNullOrWhiteSpace(raw) ? response.ReasonPhrase ?? ChatMessages.Active.HttpError : raw.Trim());
                     return ChatStreamResult.Failed($"HTTP {(int)response.StatusCode}: {Truncate(reason, 200)}");
                 }
 
@@ -234,11 +234,11 @@ public sealed class QuickChatClient
         }
         catch (HttpRequestException ex)
         {
-            return ChatStreamResult.Failed("Сеть недоступна: " + Truncate(Describe(ex), 260));
+            return ChatStreamResult.Failed(ChatMessages.Active.NetworkUnavailable + Truncate(Describe(ex), 260));
         }
         catch (TaskCanceledException)
         {
-            return ChatStreamResult.Failed("Таймаут ответа.");
+            return ChatStreamResult.Failed(ChatMessages.Active.Timeout);
         }
     }
 

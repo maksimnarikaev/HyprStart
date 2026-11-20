@@ -64,6 +64,19 @@ public partial class App : System.Windows.Application
 
         _settings = SettingsStore.Load();
 
+        // Язык интерфейса выбираем ДО создания окон: XAML читает строки через DynamicResource,
+        // а код - через Localizer.T, поэтому словарь должен быть уже подключён.
+        // Первый запуск (язык не выбран) фиксируем в настройках: RU для русской системы, иначе EN.
+        if (string.IsNullOrEmpty(Localizer.Normalize(_settings.Current.Language)))
+        {
+            _settings.Current.Language = Localizer.Resolve(_settings.Current.Language);
+            _settings.Save();
+        }
+
+        Localizer.Apply(_settings.Current.Language);
+        AppLog.Write($"start: язык интерфейса {Localizer.Current} " +
+                     $"(настройка '{(string.IsNullOrEmpty(_settings.Current.Language) ? "auto" : _settings.Current.Language)}')");
+
         // Переносимость: на чужом ПК в settings.json нет ни координат, ни города.
         // Определяем их по IP один раз и кэшируем в настройки (офлайн - просто пропускаем).
         if (!headless) LocationBootstrapper.EnsureLocation(_settings);
@@ -89,7 +102,7 @@ public partial class App : System.Windows.Application
         if (_settings.Current.InterceptWindowsKey)
         {
             AppLog.Write("ВНИМАНИЕ: включён перехват Win (interceptWindowsKey=true). " +
-                         "Этот режим оставлял клавиатуру в состоянии «Win зажат» — не используйте его до переработки.");
+                         Localizer.T("SafeModeKeyboardWarning"));
             var machine = new WinKeyStateMachine(NativeMethods.IsPointerDown);
             _hook = new KeyboardHookService(machine) { Verbose = diag };
             _hook.OverlayRequested += OnOverlayRequested;
