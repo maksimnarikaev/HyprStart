@@ -264,6 +264,23 @@ public sealed class FrequentVm
 
 public partial class MainWindow : Window
 {
+    /// <summary>
+    /// Число колонок сетки плиток «Закреплено». Растёт, когда панель MINI AI скрыта
+    /// и «Закреплено» занимает всю правую ширину. Именно DependencyProperty, а не
+    /// поиск UniformGrid по визуальному дереву: панель живёт в ItemsPanelTemplate,
+    /// и до первого рендера её просто нет в дереве (поиск возвращал null, и сетка
+    /// оставалась в 5 колонок). Разметка цепляется сюда через Binding.
+    /// </summary>
+    public static readonly DependencyProperty PinColumnsProperty =
+        DependencyProperty.Register(nameof(PinColumns), typeof(int), typeof(MainWindow),
+            new PropertyMetadata(PinTileGeometry.Columns));
+
+    public int PinColumns
+    {
+        get => (int)GetValue(PinColumnsProperty);
+        set => SetValue(PinColumnsProperty, value);
+    }
+
     private readonly SettingsStore _settings;
     private readonly PinsStore _pins;
     private readonly UsageStore _usage;
@@ -1006,7 +1023,7 @@ public partial class MainWindow : Window
         var menu = new ContextMenu { Style = (Style)FindResource("DarkContextMenuStyle") };
         menu.Items.Add(MenuAction("MenuLaunch", () => Launch(vm.Entry)));
         menu.Items.Add(MenuAction("MenuLaunchAsAdmin", () => LaunchAdmin(vm.Entry)));
-        menu.Items.Add(MenuAction(_pins.Contains(vm.Entry) ? "MenuPin" : "MenuUnpin", () =>
+        menu.Items.Add(MenuAction(_pins.Contains(vm.Entry) ? "MenuUnpin" : "MenuPin", () =>
         {
             _pins.Toggle(vm.Entry);
             RefreshPins();

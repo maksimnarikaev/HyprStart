@@ -156,20 +156,18 @@
                 <StackPanel Grid.Column="0" Margin="0,0,8,0">
                     <TextBlock Text="{DynamicResource SettingsHotkeyHeader}" Style="{DynamicResource SectionHeaderStyle}" Margin="0,0,0,8" />
                     <Border Style="{DynamicResource PillStyle}" Height="34">
-                        <!-- IsReadOnly + без каретки: поле только показывает/ловит комбинацию,
-                             текстовый ввод и курсор здесь не нужны и мешали записи. -->
-                        <!-- Focusable + IsTabStop: клик по полю обязан давать клавиатурный фокус,
-                             иначе PreviewKeyDown не придёт и комбинация не запишется.
-                             Focusable=false бывает у TextBox внутри шаблона Border/Pill. -->
-                        <TextBox x:Name="HotkeyBox" Background="Transparent" BorderThickness="0"
-                                 IsReadOnly="True" IsReadOnlyCaretVisible="False" CaretBrush="Transparent"
-                                 Focusable="True" IsTabStop="True" FocusVisualStyle="{x:Null}"
-                                 Foreground="{DynamicResource TextBrush}" FontSize="12"
-                                 VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
-                                 Cursor="Hand"
-                                 PreviewMouseLeftButtonDown="OnHotkeyMouseDown"
-                                 PreviewKeyDown="OnHotkeyPreview"
-                                 GotKeyboardFocus="OnHotkeyFocus" LostKeyboardFocus="OnHotkeyBlur" />
+                        <!-- Кнопка, а не TextBox: у TextBox фокус живёт на внутреннем
+                             TextBoxView, из-за чего PreviewKeyDown приходил нестабильно.
+                             Кнопка — единый визуальный элемент, фокус на ней самой.
+                             Комбинацию ловит WndProc окна (WM_KEYDOWN/WM_SYSKEYDOWN),
+                             поэтому Alt+Q и Esc/Enter не уходят в системное меню и в окно. -->
+                        <Button x:Name="HotkeyBox" Background="Transparent" BorderThickness="0"
+                                Focusable="True" IsTabStop="True" FocusVisualStyle="{x:Null}"
+                                Foreground="{DynamicResource TextBrush}" FontSize="12"
+                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                Cursor="Hand"
+                                PreviewMouseLeftButtonDown="OnHotkeyMouseDown"
+                                GotKeyboardFocus="OnHotkeyFocus" LostKeyboardFocus="OnHotkeyBlur" />
                     </Border>
                 </StackPanel>
 

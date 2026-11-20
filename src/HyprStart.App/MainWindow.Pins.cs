@@ -647,9 +647,10 @@ public partial class MainWindow : Window
 
         var pinItem = new MenuItem
         {
-            Header = Localizer.T(_pins.Contains(entry) ? "MenuPin" : "MenuUnpin"),
+            // Уже закреплено -> предлагаем «Открепить», иначе «Закрепить».
+            Header = Localizer.T(_pins.Contains(entry) ? "MenuUnpin" : "MenuPin"),
             Style = MenuItemStyle,
-            Tag = _pins.Contains(entry) ? MenuGlyph.Pin : MenuGlyph.Unpin,
+            Tag = _pins.Contains(entry) ? MenuGlyph.Unpin : MenuGlyph.Pin,
         };
         pinItem.Click += (_, _) =>
         {

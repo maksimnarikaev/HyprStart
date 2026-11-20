@@ -360,12 +360,10 @@ public partial class MainWindow : Window
         // Колонки адаптивны к ширине панели: при скрытом мини-чате панель почти вдвое
         // шире, и сетка добавляет колонки вместо того, чтобы растягивать плитки.
         int columns = PinTileGeometry.ColumnCount(inner);
-        // Панели сетки живут внутри ItemsPanelTemplate, поэтому именованные поля
-        // для них не генерируются — достаём их из визуального дерева по x:Name.
-        var pinsGrid = FindGrid(PinsList, "PinsGrid");
-        var folderGrid = FindGrid(FolderList, "FolderGrid");
-        if (pinsGrid is not null && pinsGrid.Columns != columns) pinsGrid.Columns = columns;
-        if (folderGrid is not null && folderGrid.Columns != columns) folderGrid.Columns = columns;
+        // Сетка цепляется к DependencyProperty через Binding: до первого рендера
+        // UniformGrid ещё нет в визуальном дереве, и поиск по нему возвращал null,
+        // оставляя жёсткие 5 колонок даже на расширенной панели.
+        if (PinColumns != columns) PinColumns = columns;
 
         double tile = PinTileGeometry.TileWidth(inner, columns);
         if (PinsList.ItemsSource is IReadOnlyList<PinVm> pins)
@@ -386,34 +384,7 @@ public partial class MainWindow : Window
 
         AppLog.Write($"pins: inner={inner:0} cols={columns} tile={tile:0.#}" +
                      $"x{PinTileGeometry.TileHeight(tile):0.#} grid={gridHeight:0} hideChat={hideChat}");
-    }
 
-    /// <summary>
-    /// Ищет UniformGrid сетки плиток внутри ItemsControl. Панель задана в ItemsPanelTemplate,
-    /// поэтому её нельзя адресовать по имени из разметки — обходим визуальное дерево.
-    /// </summary>
-    private static UniformGrid? FindGrid(ItemsControl host, string name)
-    {
-        if (host is null) return null;
-        for (int i = 0; i < host.Items.Count; i++)
-        {
-            if (host.ItemContainerGenerator.ContainerFromIndex(i) is DependencyObject container
-                && FindGridByName(container, name) is { } grid)
-                return grid;
-        }
-        return null;
-    }
-
-    private static UniformGrid? FindGridByName(DependencyObject root, string name)
-    {
-        int count = VisualTreeHelper.GetChildrenCount(root);
-        for (int i = 0; i < count; i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            if (child is UniformGrid grid && grid.Name == name) return grid;
-            if (FindGridByName(child, name) is { } nested) return nested;
-        }
-        return null;
     }
 
     private static void Place(FrameworkElement element, PixelRect rect)

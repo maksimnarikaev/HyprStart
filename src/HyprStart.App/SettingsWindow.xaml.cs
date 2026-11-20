@@ -1,9 +1,11 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using HyprStart.App.Services;
 using HyprStart.Core.Input;
@@ -44,7 +46,7 @@ public partial class SettingsWindow : Window
 
         InitializeComponent();
 
-        HotkeyBox.Text = store.Current.Hotkey;
+        HotkeyBox.Content = store.Current.Hotkey;
         _hotkey = HotkeySpec.TryParse(store.Current.Hotkey, out var parsed) ? parsed : HotkeySpec.AltSpace;
 
         BaseUrlBox.Text = string.IsNullOrWhiteSpace(store.Current.ChatBaseUrl)
@@ -114,6 +116,9 @@ public partial class SettingsWindow : Window
     private IDisposable? _hotkeyPause;
     private IDisposable? _hookPause;
 
+    /// <summary>HWND окна настроек: через него снимается WndProc-хук в OnClosed.</summary>
+    private IntPtr _hwnd;
+
     private static string DescribeKey(string? key)
     {
         if (!string.IsNullOrEmpty(key))
@@ -128,12 +133,8 @@ public partial class SettingsWindow : Window
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        // Пока идёт запись комбинации, окно не реагирует ни на Esc, ни на Enter:
-        // эти клавиши — часть переназначаемой комбинации, а не команда окну.
-        // IsKeyboardFocusWithin, а не IsFocused: реальный фокус в WPF лежит
-        // на внутреннем TextBoxView шаблона, и IsFocused на самом TextBox врёт.
-        // Событие дальше уйдёт в OnHotkeyPreview (туннель идёт сверху вниз),
-        // поэтому здесь только помечаем нажатие обработанным и выходим.
+        // Пока идёт запись, клавиши обрабатывает WndProc: сюда событие не должно
+        // доходить, иначе Esc закрывал бы окно, а Enter сохранял настройки.
         if (HotkeyBox.IsKeyboardFocusWithin)
         {
             e.Handled = true;
@@ -155,9 +156,8 @@ public partial class SettingsWindow : Window
     }
 
     /// <summary>
-    /// Клик в любую точку поля гарантированно ставит клавиатурный фокус в TextBox.
-    /// Без этого клик по рамке/отступу (Border-пилюля) не фокусировал поле,
-    /// и PreviewKeyDown у HotkeyBox не получал ни одного нажатия.
+    /// Клик в любую точку поля ставит клавиатурный фокус на кнопку.
+    /// Раньше фокус уходил во внутренний TextBoxView, и нажатия не доходили.
     /// </summary>
     private void OnHotkeyMouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -170,7 +170,7 @@ public partial class SettingsWindow : Window
 
     private void OnHotkeyFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        HotkeyBox.Text = Localizer.T("SettingsHotkeyCapturePrompt");
+        HotkeyBox.Content = Localizer.T("SettingsHotkeyCapturePrompt");
         HotkeyBox.Foreground = (MediaBrush)FindResource("AccentBrush");
 
         // Старая комбинация отпускается ОС: иначе её нажатие во время записи
@@ -182,7 +182,7 @@ public partial class SettingsWindow : Window
 
     private void OnHotkeyBlur(object sender, KeyboardFocusChangedEventArgs e)
     {
-        HotkeyBox.Text = _hotkey.Describe();
+        HotkeyBox.Content = _hotkey.Describe();
         HotkeyBox.Foreground = (MediaBrush)FindResource("TextBrush");
 
         _hotkeyPause?.Dispose();
@@ -192,56 +192,104 @@ public partial class SettingsWindow : Window
         AppLog.Write("settings: захват комбинации завершён — глобальный хоткей и хук возвращены");
     }
 
-    /// <summary>Захват комбинации: ждём модификатор + клавишу, Esc отменяет захват.</summary>
-    private void OnHotkeyPreview(object sender, KeyEventArgs e)
+    protected override void OnSourceInitialized(EventArgs e)
     {
-        e.Handled = true;
+        base.OnSourceInitialized(e);
 
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        // Клавиши ловим на уровне окна: WPF не даёт надёжно поймать Alt+<клавиша>
+        // в PreviewKeyDown (Alt съедается системным меню), а WM_SYSKEYDOWN приходит всегда.
+        _hwnd = new WindowInteropHelper(this).Handle;
+        HwndSource.FromHwnd(_hwnd)?.AddHook(SettingsWndProc);
+    }
 
-        if (key == Key.Escape)
+    protected override void OnClosed(EventArgs e)
+    {
+        if (_hwnd != IntPtr.Zero)
+            HwndSource.FromHwnd(_hwnd)?.RemoveHook(SettingsWndProc);
+
+        _hwnd = IntPtr.Zero;
+        base.OnClosed(e);
+    }
+
+    /// <summary>
+    /// Пока фокус в поле хоткея, все WM_KEYDOWN/WM_SYSKEYDOWN потребляются здесь:
+    /// модификаторы читаем через GetAsyncKeyState (WPF в этот момент ещё не обновил
+    /// Keyboard.Modifiers для только что нажатой клавиши), клавишу — из wParam.
+    /// </summary>
+    private IntPtr SettingsWndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        const int WM_KEYDOWN = 0x0100;
+        const int WM_SYSKEYDOWN = 0x0104;
+
+        if (msg != WM_KEYDOWN && msg != WM_SYSKEYDOWN) return IntPtr.Zero;
+        if (!HotkeyBox.IsKeyboardFocused) return IntPtr.Zero;
+
+        // Пока поле в фокусе, окно не должно видеть ни одной клавиши:
+        // Alt иначе открывает системное меню, Esc закрывает окно, Enter сохраняет.
+        handled = true;
+
+        int vk = unchecked((int)wParam.ToInt64());
+        RecordHotkey(vk);
+        return IntPtr.Zero;
+    }
+
+    private const int VkShift = 0x10;
+    private const int VkControl = 0x11;
+    private const int VkMenu = 0x12;
+    private const int VkLWin = 0x5B;
+    private const int VkRWin = 0x5C;
+
+    /// <summary>Разбирает нажатие в комбинацию и обновляет поле.</summary>
+    private void RecordHotkey(int vk)
+    {
+        // Сами модификаторы не считаем: ждём обычную клавишу вместе с ними.
+        if (vk is VkShift or VkControl or VkMenu or VkLWin or VkRWin)
         {
-            // Esc — отмена записи, а не закрытие окна настроек.
-            HotkeyBox.Text = _hotkey.Describe();
+            AppLog.Write($"settings: модификатор vk=0x{vk:X2} — ждём основную клавишу");
+            return;
+        }
+
+        if (vk == 0x1B) // VK_ESCAPE — отмена записи, а не закрытие окна.
+        {
+            HotkeyBox.Content = _hotkey.Describe();
+            AppLog.Write("settings: запись комбинации отменена по Esc");
             EndHotkeyCapture();
             return;
         }
 
-        // Сами модификаторы не считаем: ждём обычную клавишу вместе с ними.
-        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt
-            or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin
-            or Key.None or Key.DeadCharProcessed)
-        {
-            return;
-        }
-
-        var mods = CurrentModifiers();
+        uint mods = 0;
+        if (IsDown(VkMenu)) mods |= HotkeySpec.ModAlt;
+        if (IsDown(VkControl)) mods |= HotkeySpec.ModControl;
+        if (IsDown(VkShift)) mods |= HotkeySpec.ModShift;
+        if (IsDown(VkLWin) || IsDown(VkRWin)) mods |= HotkeySpec.ModWin;
 
         // Глобальный хоткей без модификатора перехватил бы всю клавиатуру системы.
         if (mods == 0)
         {
-            HotkeyBox.Text = Localizer.T("SettingsHotkeyNeedModifier");
+            HotkeyBox.Content = Localizer.T("SettingsHotkeyNeedModifier");
             return;
         }
 
-        var vk = (uint)KeyInterop.VirtualKeyFromKey(key);
-        var built = HotkeySpec.FromKey(mods, vk);
+        var built = HotkeySpec.FromKey(mods, (uint)vk);
         if (built is null)
         {
-            HotkeyBox.Text = Localizer.T("SettingsHotkeyUnsupported");
+            HotkeyBox.Content = Localizer.T("SettingsHotkeyUnsupported");
             return;
         }
 
         _hotkey = built.Value;
-        HotkeyBox.Text = _hotkey.Describe();
+        HotkeyBox.Content = _hotkey.Describe();
         HotkeyBox.Foreground = (MediaBrush)FindResource("TextBrush");
         AppLog.Write($"settings: распознана комбинация {_hotkey.Describe()} (mods=0x{mods:X2} vk=0x{vk:X2})");
 
-        // Комбинация записана — запись закончена. Без этого фокус оставался в поле,
-        // Esc/Enter продолжали считаться частью комбинации, а глобальный хоткей
-        // оставался приостановленным до закрытия окна.
+        // Комбинация записана — запись закончена, глобальный хоткей возвращается.
         EndHotkeyCapture();
     }
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vKey);
+
+    private static bool IsDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 
     /// <summary>Завершает запись: снимает фокус с поля и возвращает глобальный хоткей.</summary>
     private void EndHotkeyCapture()
