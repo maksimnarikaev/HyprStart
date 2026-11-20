@@ -158,8 +158,12 @@
                     <Border Style="{DynamicResource PillStyle}" Height="34">
                         <!-- IsReadOnly + без каретки: поле только показывает/ловит комбинацию,
                              текстовый ввод и курсор здесь не нужны и мешали записи. -->
+                        <!-- Focusable + IsTabStop: клик по полю обязан давать клавиатурный фокус,
+                             иначе PreviewKeyDown не придёт и комбинация не запишется.
+                             Focusable=false бывает у TextBox внутри шаблона Border/Pill. -->
                         <TextBox x:Name="HotkeyBox" Background="Transparent" BorderThickness="0"
                                  IsReadOnly="True" IsReadOnlyCaretVisible="False" CaretBrush="Transparent"
+                                 Focusable="True" IsTabStop="True" FocusVisualStyle="{x:Null}"
                                  Foreground="{DynamicResource TextBrush}" FontSize="12"
                                  VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
                                  Cursor="Hand"

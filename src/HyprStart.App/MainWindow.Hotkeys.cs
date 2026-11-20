@@ -120,6 +120,12 @@ public partial class MainWindow : Window
     private void ApplyChatVisibility()
     {
         PanelChat.Visibility = _settings.Current.HideChatPanel ? Visibility.Collapsed : Visibility.Visible;
+
+        // Флаг влияет не только на видимость: при скрытой панели MINI AI «Закреплено»
+        // забирает всю правую колонку. Без пересчёта геометрии панель оставалась узкой
+        // (и сетка плиток — с прежним числом колонок) до следующего изменения размера окна.
+        ApplyGeometry();
+        if (_lastLayout is { } layout) FitPinTiles(layout.Pinned, _settings.Current.HideChatPanel);
     }
 
     private void ApplyFilterFromSearch()
