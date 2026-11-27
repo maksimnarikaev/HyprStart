@@ -270,6 +270,10 @@ public sealed class UsageStore
 
     public string Path { get; }
 
+    /// <summary>Счётчик изменений: растёт при Register/Remove, чтобы вызывающий код
+    /// мог дёшево понять, что снимок статистики устарел (кэш поиска).</summary>
+    public int Version { get; private set; }
+
     public int CountFor(string target)
         => _data.Items.TryGetValue(target, out var record) ? record.Count : 0;
 
@@ -298,6 +302,7 @@ public sealed class UsageStore
 
         record.Count++;
         record.LastUsed = DateTime.Now;
+        Version++;
         Save();
     }
 
@@ -306,6 +311,7 @@ public sealed class UsageStore
     {
         if (!_data.Items.Remove(target)) return false;
 
+        Version++;
         Save();
         AppLog.Write($"usage: '{target}' убрано из частого");
         return true;
