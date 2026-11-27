@@ -1,4 +1,4 @@
-<Window x:Class="HyprStart.App.SettingsWindow"
+﻿<Window x:Class="HyprStart.App.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{DynamicResource SettingsWindowTitle}"
@@ -6,7 +6,7 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
-        TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType" TextOptions.TextHintingMode="Fixed"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType" TextOptions.TextHintingMode="Fixed"
         FontFamily="Segoe UI" Foreground="{DynamicResource TextBrush}">
 
     <Window.Resources>

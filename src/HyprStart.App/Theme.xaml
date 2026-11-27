@@ -5,8 +5,8 @@
     <SolidColorBrush x:Key="GlassTintBrush" Color="#F80A0F1C" />
     <SolidColorBrush x:Key="DividerBrush" Color="#4D7FA9F0" />
     <SolidColorBrush x:Key="AccentBrush" Color="#A9C4F5" />
-    <SolidColorBrush x:Key="TextBrush" Color="#F5FAFF" />
-    <SolidColorBrush x:Key="MutedBrush" Color="#C3D3EA" />
+    <SolidColorBrush x:Key="TextBrush" Color="#FCFDFF" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#D6E2F2" />
     <SolidColorBrush x:Key="PillBrush" Color="#66142033" />
     <SolidColorBrush x:Key="PillBorderBrush" Color="#337FA9F0" />
 
@@ -15,7 +15,7 @@
          отдельным Line-элементам (те дали бы сотни visual'ов на панель). -->
     <DrawingBrush x:Key="GlassGridBrush"
                   TileMode="Tile"
-                  Viewport="0,0,12,12"
+                  Viewport="0,0,108,108"
                   ViewportUnits="Absolute"
                   Stretch="None"
                   RenderOptions.CachingHint="Cache"
@@ -24,12 +24,12 @@
         <DrawingBrush.Drawing>
             <GeometryDrawing Brush="{x:Null}">
                 <GeometryDrawing.Pen>
-                    <Pen Brush="#0EFFFFFF" Thickness="1" />
+                    <Pen Brush="#07FFFFFF" Thickness="1" />
                 </GeometryDrawing.Pen>
                 <GeometryDrawing.Geometry>
                     <GeometryGroup>
-                        <LineGeometry StartPoint="0,0" EndPoint="12,0" />
-                        <LineGeometry StartPoint="0,0" EndPoint="0,12" />
+                        <LineGeometry StartPoint="0,0" EndPoint="108,0" />
+                        <LineGeometry StartPoint="0,0" EndPoint="0,108" />
                     </GeometryGroup>
                 </GeometryDrawing.Geometry>
             </GeometryDrawing>
@@ -292,7 +292,7 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SelectionBrush}" />
-                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PanelBorderGradient}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="#8C7FA9F0" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -324,7 +324,7 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SelectionBrush}" />
-                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource PanelBorderGradient}" />
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="#8C7FA9F0" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
