@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
     <AssemblyName>HyprStart</AssemblyName>
     <RootNamespace>HyprStart.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
