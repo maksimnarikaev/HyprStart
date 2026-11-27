@@ -85,6 +85,22 @@ public sealed class ThemeService
         Apply(Clone(palette, AutoName));
     }
 
+    /// <summary>
+    /// Переприменяет текущую палитру без смены темы. Нужен после правки настроек
+    /// (например, переключателя клетки): в режиме auto <see cref="ApplyByName"/> ушёл бы
+    /// в фолбэк и подменил цвета обоев дефолтным пресетом до следующего снимка экрана.
+    /// </summary>
+    public void Reapply()
+    {
+        if (Current is not null)
+        {
+            Apply(Current);
+            return;
+        }
+
+        if (IsAutoActive) ApplyAuto(AutoFallback);
+    }
+
     /// <summary>Копия палитры с другим именем: палитра из кадра не должна попасть в список тем.</summary>
     private static ThemePalette Clone(ThemePalette source, string name) => new()
     {

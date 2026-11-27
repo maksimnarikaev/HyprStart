@@ -117,7 +117,10 @@ public partial class MainWindow : Window
         ApplyHotkey();
         ApplyChatVisibility();
         _themes.PanelsGrid = _settings.Current.ShowPanelGrid;
-        _themes.ApplyByName(_themes.CurrentName);
+
+        // Reapply, а не ApplyByName: в режиме auto имя "auto" увело бы палитру в фолбэк,
+        // и панели после сохранения настроек теряли цвета обоев и прозрачность.
+        _themes.Reapply();
         UpdateChatSetupHint();
 
         AppLog.Write(

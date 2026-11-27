@@ -13,11 +13,20 @@
     <!-- Клетка на фоне панелей: еле заметная сетка тонких диагональных линий.
          Тайл 108x108 рисует две линии под 45 градусов (крест в каждой ячейке),
          поэтому визуально это ромбы. DrawingBrush кэшируется и тайлится
-         видеокартой - дешёвая альтернатива отдельным Line-элементам. -->
+         видеокартой - дешёвая альтернатива отдельным Line-элементам.
+
+         ViewportUnits="Absolute" + AlignX/AlignY="Left/Top": сетка привязана к
+         системе координат экрана, а не к левому верхнему углу каждой панели,
+         поэтому линии идут непрерывно и совпадают на стыках соседних окон.
+         Альфа 04 (~1.5%) - линии угадываются, а не читаются как рисунок. -->
     <DrawingBrush x:Key="GlassGridBrush"
                   TileMode="Tile"
                   Viewport="0,0,108,108"
                   ViewportUnits="Absolute"
+                  Viewbox="0,0,108,108"
+                  ViewboxUnits="Absolute"
+                  AlignmentX="Left"
+                  AlignmentY="Top"
                   Stretch="None"
                   RenderOptions.CachingHint="Cache"
                   RenderOptions.CacheInvalidationThresholdMinimum="0.5"
@@ -25,7 +34,7 @@
         <DrawingBrush.Drawing>
             <GeometryDrawing Brush="{x:Null}">
                 <GeometryDrawing.Pen>
-                    <Pen Brush="#07FFFFFF" Thickness="1" />
+                    <Pen Brush="#04FFFFFF" Thickness="1" />
                 </GeometryDrawing.Pen>
                 <GeometryDrawing.Geometry>
                     <GeometryGroup>
