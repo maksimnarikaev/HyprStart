@@ -17,6 +17,9 @@ public sealed class ThemeService
     /// <summary>Насколько повышаем непрозрачность стекла относительно темы (~7%).</summary>
     private const int GlassAlphaBoost = 18;
 
+    /// <summary>Ключ кисти-клетки на панелях в Theme.xaml.</summary>
+    private const string GridKey = "GlassGridBrush";
+
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
@@ -140,6 +143,9 @@ public sealed class ThemeService
         return next.Name;
     }
 
+    /// <summary>Показывать ли клетку на фоне панелей.</summary>
+    public bool PanelsGrid { get; set; } = true;
+
     private void Apply(ThemePalette theme)
     {
         try
@@ -159,6 +165,8 @@ public sealed class ThemeService
             PutSolid("SelectionBrush", theme.Selection);
             PutSolid("MenuBrush", theme.Menu);
 
+            PutGrid(PanelsGrid);
+
             PutGradient("PanelBorderGradient", theme.BorderFrom, theme.BorderTo);
             PutGradient("CavaGradient", theme.CavaFrom, theme.CavaTo);
 
@@ -171,6 +179,41 @@ public sealed class ThemeService
         catch (Exception ex)
         {
             AppLog.Error($"theme: не удалось применить '{theme.Name}'", ex);
+        }
+    }
+
+    /// <summary>
+    /// Клетка на панелях: либо кисть-сетка из Theme.xaml, либо прозрачная заглушка,
+    /// чтобы выключенная настройка не требовала отдельного стиля.
+    /// </summary>
+    private static void PutGrid(bool enabled)
+    {
+        try
+        {
+            if (System.Windows.Application.Current?.Resources is not { } res) return;
+
+            if (enabled)
+            {
+                // возвращаем исходную кисть из темы, если её ранее подменили заглушкой
+                if (res[GridKey] is SolidColorBrush && res[GridKey + "Original"] is System.Windows.Media.Brush original)
+                {
+                    res[GridKey] = original;
+                    res.Remove(GridKey + "Original");
+                }
+                return;
+            }
+
+            var current = res[GridKey];
+            if (current is null or SolidColorBrush) return;
+            res[GridKey + "Original"] = current;
+
+            var empty = new SolidColorBrush(MediaColor.FromArgb(0, 0, 0, 0));
+            empty.Freeze();
+            res[GridKey] = empty;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("theme: не удалось переключить клетку панелей", ex);
         }
     }
 

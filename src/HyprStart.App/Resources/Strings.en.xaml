@@ -1,4 +1,4 @@
-<!-- English UI strings (default for GitHub) -->
+﻿<!-- English UI strings (default for GitHub) -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
@@ -83,6 +83,7 @@
     <sys:String x:Key="SettingsLanguageHeader">LANGUAGE</sys:String>
     <sys:String x:Key="SettingsLanguageLabel">Interface language</sys:String>
     <sys:String x:Key="SettingsHideChat">Hide MINI AI panel</sys:String>
+    <sys:String x:Key="SettingsPanelGrid">Subtle grid on panel background</sys:String>
     <sys:String x:Key="SettingsAutostart">Run at Windows startup</sys:String>
     <sys:String x:Key="SettingsAutostartKey">Key HKCU\Software\Microsoft\Windows\CurrentVersion\Run</sys:String>
     <sys:String x:Key="SettingsRevealKey">Show/hide key</sys:String>

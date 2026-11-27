@@ -10,9 +10,10 @@
     <SolidColorBrush x:Key="PillBrush" Color="#66142033" />
     <SolidColorBrush x:Key="PillBorderBrush" Color="#337FA9F0" />
 
-    <!-- Клетка на фоне панелей: еле заметная сетка тонких линий.
-         DrawingBrush кэшируется и тайлится видеокартой - дешёвая альтернатива
-         отдельным Line-элементам (те дали бы сотни visual'ов на панель). -->
+    <!-- Клетка на фоне панелей: еле заметная сетка тонких диагональных линий.
+         Тайл 108x108 рисует две линии под 45 градусов (крест в каждой ячейке),
+         поэтому визуально это ромбы. DrawingBrush кэшируется и тайлится
+         видеокартой - дешёвая альтернатива отдельным Line-элементам. -->
     <DrawingBrush x:Key="GlassGridBrush"
                   TileMode="Tile"
                   Viewport="0,0,108,108"
@@ -28,8 +29,8 @@
                 </GeometryDrawing.Pen>
                 <GeometryDrawing.Geometry>
                     <GeometryGroup>
-                        <LineGeometry StartPoint="0,0" EndPoint="108,0" />
-                        <LineGeometry StartPoint="0,0" EndPoint="0,108" />
+                        <LineGeometry StartPoint="0,0" EndPoint="108,108" />
+                        <LineGeometry StartPoint="108,0" EndPoint="0,108" />
                     </GeometryGroup>
                 </GeometryDrawing.Geometry>
             </GeometryDrawing>

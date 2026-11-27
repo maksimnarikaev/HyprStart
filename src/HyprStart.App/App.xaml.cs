@@ -101,7 +101,10 @@ public partial class App : System.Windows.Application
         // Стартовые пины строим из РЕАЛЬНО установленных программ: жёсткий список
         // ярлыков на чужой машине дал бы битые ссылки.
         if (!headless) Bootstrapper.SeedPins(_pins, _settings);
-        _themes = new ThemeService(_settings.Current.Theme);
+        _themes = new ThemeService(_settings.Current.Theme)
+        {
+            PanelsGrid = _settings.Current.ShowPanelGrid,
+        };
         if (!headless) ConfigureAutostartOnFirstRun();
         RefreshAutostartPath();
 

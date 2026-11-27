@@ -79,6 +79,7 @@ public partial class SettingsWindow : Window
         ModelBox.ToolTip = Localizer.T("SettingsModelToolTip");
 
         HideChatBox.IsChecked = store.Current.HideChatPanel;
+        PanelGridBox.IsChecked = store.Current.ShowPanelGrid;
 
         var weather = store.Current.Weather ??= new WeatherLocationSettings();
         GeoHint.Text = weather.HasCoordinates
@@ -563,6 +564,7 @@ public partial class SettingsWindow : Window
             ? ChatEndpoint.DefaultModel
             : ModelBox.Text.Trim();
         settings.HideChatPanel = HideChatBox.IsChecked == true;
+        settings.ShowPanelGrid = PanelGridBox.IsChecked == true;
 
         settings.Hotkey = _hotkey.Describe();
         settings.Theme = string.IsNullOrWhiteSpace(_pendingTheme) ? settings.Theme : _pendingTheme;

@@ -53,6 +53,10 @@ public partial class MainWindow : Window
         // Скрытие оверлея рвёт активный HTTP-запрос: в скрытом виде никакой работы.
         CancelChatRequest();
 
+        // Окно настроек живёт отдельным top-level окном и не наследует скрытие оверлея,
+        // поэтому закрываем его руками — иначе оно висит поверх всех приложений.
+        CloseSettings();
+
         if (!_awake) return;
 
         _awake = false;

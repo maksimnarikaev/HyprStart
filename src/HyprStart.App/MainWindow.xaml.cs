@@ -497,6 +497,14 @@ public partial class MainWindow : Window
     {
         ResetOpenVisuals();
 
+        // Каждый показ начинаем с главного экрана закреплённого: открытая ранее папка не должна
+        // персистить между вызовами меню. Закрытие папки — действие внутри сессии пуска.
+        if (_openFolder is not null)
+        {
+            _openFolder = null;
+            RefreshPins();
+        }
+
         // На время обновления списка гасим фейд у строк, чтобы не мигать на пустом запросе
         _suppressSearchFade = true;
 

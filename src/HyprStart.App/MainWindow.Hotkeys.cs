@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -90,6 +90,25 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Закрывает окно настроек, если оно открыто. Вызывается при скрытии оверлея:
+    /// окно настроек — обычное top-level окно, и без этого оно оставалось висеть
+    /// поверх чужих приложений после закрытия меню Пуск.
+    /// </summary>
+    public void CloseSettings()
+    {
+        if (_settingsWindow is null) return;
+
+        try
+        {
+            _settingsWindow.Close();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("settings: не удалось закрыть окно настроек", ex);
+        }
+    }
+
+    /// <summary>
     /// Применяет сохранённые настройки: глобальный хоткей, видимость панели MINI AI
     /// и подсказку в чате, если ключ так и не задали.
     /// </summary>
@@ -97,6 +116,8 @@ public partial class MainWindow : Window
     {
         ApplyHotkey();
         ApplyChatVisibility();
+        _themes.PanelsGrid = _settings.Current.ShowPanelGrid;
+        _themes.ApplyByName(_themes.CurrentName);
         UpdateChatSetupHint();
 
         AppLog.Write(

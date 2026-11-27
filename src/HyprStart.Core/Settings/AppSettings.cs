@@ -108,6 +108,13 @@ public sealed class AppSettings
     /// <summary>Скрыть панель MINI AI целиком: чат не грузит сеть и не занимает место в раскладке.</summary>
     public bool HideChatPanel { get; set; }
 
+    /// <summary>
+    /// Рисовать еле заметную клетку (сетку диагональных линий) на фоне панелей.
+    /// Глазу есть за что зацепиться на плоскости стекла, поэтому интерфейс
+    /// субъективно кажется чётче. По умолчанию включено.
+    /// </summary>
+    public bool ShowPanelGrid { get; set; } = true;
+
     /// <summary>Город и координаты для погоды; при первом старте определяются по IP.</summary>
     public WeatherLocationSettings Weather { get; set; } = new();
 

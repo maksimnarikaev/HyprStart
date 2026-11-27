@@ -106,6 +106,7 @@ public class SettingsSchemaTests
             ChatBaseUrl = "https://openrouter.ai/api/v1",
             ChatModel = "openai/gpt-4o-mini",
             HideChatPanel = true,
+            ShowPanelGrid = false,
             SeedPinsLogged = true,
             Weather = new WeatherLocationSettings
             {
@@ -124,6 +125,7 @@ public class SettingsSchemaTests
         Assert.Equal("https://openrouter.ai/api/v1", restored.ChatBaseUrl);
         Assert.Equal("openai/gpt-4o-mini", restored.ChatModel);
         Assert.True(restored.HideChatPanel);
+        Assert.False(restored.ShowPanelGrid);
         Assert.True(restored.SeedPinsLogged);
         Assert.Equal("Казань", restored.Weather.City);
         Assert.Equal(55.7887, restored.Weather.Latitude, 4);
@@ -138,6 +140,7 @@ public class SettingsSchemaTests
 
         Assert.Contains("chatBaseUrl", json);
         Assert.Contains("hideChatPanel", json);
+        Assert.Contains("showPanelGrid", json);
         Assert.Contains("weather", json);
         Assert.Contains("seedPinsLogged", json);
     }
