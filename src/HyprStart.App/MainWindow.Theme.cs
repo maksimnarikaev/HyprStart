@@ -208,7 +208,6 @@ public partial class MainWindow : Window
         if (_quietTicks != 0)
         {
             _quietTicks = (_quietTicks + 1) % MeterIdleSampleEvery;
-            SetTrackText();
             return;
         }
 
@@ -221,7 +220,6 @@ public partial class MainWindow : Window
         if (quiet)
         {
             _quietTicks = (_quietTicks + 1) % MeterIdleSampleEvery;
-            SetTrackText();
             return;
         }
 
@@ -249,7 +247,8 @@ public partial class MainWindow : Window
             if (Math.Abs(_barScales[i].ScaleY - scale) > 0.004) _barScales[i].ScaleY = scale;
         }
 
-        SetTrackText();
+        // Текст трека здесь НЕ обновляем: он приходит событием GSMTC (OnTrackChanged),
+        // а вызов в цикле 16 раз в секунду давал лишние аллокации строки и сравнения TextBlock.Text.
     }
 
     private void SetTrackText()
