@@ -1,8 +1,9 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using HyprStart.App.Interop;
@@ -308,6 +309,56 @@ internal static class IconCache
     {
         if (image.Width <= 0 || image.Height <= 0) return 0;
 
+        const int Grid = 16;
+        int opaque = 0;
+
+        // GetPixel маршалит вызов на каждую точку (256 вызовов на кандидата).
+        // Здесь — одна блокировка и копирование только нужных строк в общий буфер.
+        var rect = new Rectangle(0, 0, image.Width, image.Height);
+
+        try
+        {
+            var data = image.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+
+            try
+            {
+                int stride = data.Stride;
+                int rowBytes = image.Width * 4;
+                var buffer = new byte[Math.Abs(stride)];
+
+                for (int gy = 0; gy < Grid; gy++)
+                {
+                    int y = Math.Min(image.Height - 1, (int)((gy + 0.5) * image.Height / Grid));
+                    IntPtr rowPtr = stride >= 0
+                        ? IntPtr.Add(data.Scan0, y * stride)
+                        : IntPtr.Add(data.Scan0, (image.Height - 1 - y) * -stride);
+
+                    Marshal.Copy(rowPtr, buffer, 0, rowBytes);
+
+                    for (int gx = 0; gx < Grid; gx++)
+                    {
+                        int x = Math.Min(image.Width - 1, (int)((gx + 0.5) * image.Width / Grid));
+
+                        if (buffer[x * 4 + 3] > 24) opaque++; // BGRA: альфа — 4-й байт
+                    }
+                }
+            }
+            finally
+            {
+                image.UnlockBits(data);
+            }
+        }
+        catch (Exception)
+        {
+            return FallbackCoverage(image); // формат не блокируется как 32bppArgb
+        }
+
+        return (double)opaque / (Grid * Grid);
+    }
+
+    /// <summary>Запасной путь для форматов, которые не блокируются как 32bppArgb.</summary>
+    private static double FallbackCoverage(Bitmap image)
+    {
         const int Grid = 16;
         int opaque = 0;
 
