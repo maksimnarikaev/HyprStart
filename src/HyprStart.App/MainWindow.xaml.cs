@@ -305,6 +305,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _tickTimer;
     private readonly DispatcherTimer _meterTimer;
     private bool _awake;
+    private bool _trackHooked;
     private SettingsWindow? _settingsWindow;
     private HotkeyService? _hotkey;
     private LayoutResult? _lastLayout;
@@ -413,9 +414,10 @@ public partial class MainWindow : Window
         BuildMeterBars();
 
         // Медиа: подписка на события GSMTC вместо опроса каждые 5 секунд.
-        // Так тик не тратит CPU; если сессия появится или сменится, придёт событие сам.
+        // Хук НЕ ставится здесь: обращение к WinRT (Windows.Media.Control) тянет
+        // Microsoft.Windows.SDK.NET.dll (~54 МБ) и COM-активацию менеджера сессий
+        // ещё до первого показа окна. Ставим лениво, при первом показе оверлея.
         _monitor.TrackChanged += OnTrackChanged;
-        _ = _monitor.HookTrackEventsAsync();
 
         // Таймеры телеметрии и эквалайзера в скрытом виде не крутятся:
         // они запускаются только из OverlayController (Show -> ResumeActivity, Hide -> SuspendActivity).

@@ -40,6 +40,16 @@ public partial class MainWindow : Window
 
         _tickTimer.Start();
         _meterTimer.Start();
+
+        // Ленивая инициализация медиа-событий: только когда оверлей реально показан.
+        // WinRT (Windows.Media.Control) грузит Microsoft.Windows.SDK.NET.dll (~54 МБ),
+        // поэтому до первого показа к нему не прикасаемся.
+        if (!_trackHooked)
+        {
+            _trackHooked = true;
+            _ = _monitor.HookTrackEventsAsync();
+        }
+
         AppLog.Write("perf: активность включена");
     }
 
