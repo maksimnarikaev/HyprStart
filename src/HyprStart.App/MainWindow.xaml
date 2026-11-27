@@ -13,7 +13,9 @@
         SnapsToDevicePixels="True"
         FontFamily="{StaticResource MonoFont}"
         FontSize="12.5"
-        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextFormattingMode="Ideal"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed"
         PreviewKeyDown="OnPreviewKeyDown"
         PreviewTextInput="OnPreviewTextInput">
 

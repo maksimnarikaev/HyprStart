@@ -14,6 +14,9 @@ namespace HyprStart.App.Services;
 /// </summary>
 public sealed class ThemeService
 {
+    /// <summary>Насколько повышаем непрозрачность стекла относительно темы (~7%).</summary>
+    private const int GlassAlphaBoost = 18;
+
     private static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
@@ -143,7 +146,7 @@ public sealed class ThemeService
         {
             // Заменяем ресурсы НОВЫМИ экземплярами кистей: DynamicResource подхватит их сразу,
             // а мутировать замороженные кисти (как раньше) бессмысленно — они IsFrozen.
-            PutSolid("GlassTintBrush", theme.Glass);
+            PutSolid("GlassTintBrush", DenserGlass(theme.Glass));
             PutSolid("DividerBrush", theme.Divider);
             PutSolid("AccentBrush", theme.Accent);
             PutSolid("TextBrush", theme.Text);
@@ -187,6 +190,21 @@ public sealed class ThemeService
 
     private static string ReadColor(string key)
         => System.Windows.Application.Current?.Resources[key] is SolidColorBrush brush ? brush.Color.ToString() : "?";
+
+    /// <summary>
+    /// Стёкло чуть плотнее заданного в теме: избыточная прозрачность давала
+    /// ощущение «мыла». Правим здесь, а не в файлах тем: у пользователя могут
+    /// лежать старые themes/*.json, которые EnsureThemeFile не перезаписывает.
+    /// </summary>
+    private static string DenserGlass(string? hex)
+    {
+        var color = Parse(hex, Colors.White);
+
+        // Прибавка к альфе (единицы 0..255) с клампом.
+        var alpha = Math.Clamp(color.A + GlassAlphaBoost, 0, 255);
+
+        return string.Format("#{0:X2}{1:X2}{2:X2}{3:X2}", alpha, color.R, color.G, color.B);
+    }
 
     private static MediaColor Parse(string? hex, MediaColor fallback)
     {

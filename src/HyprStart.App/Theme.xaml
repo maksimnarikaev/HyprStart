@@ -2,13 +2,39 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ===== Палитра по референсу: льдисто-синий, лаванда, тёплые блики ===== -->
-    <SolidColorBrush x:Key="GlassTintBrush" Color="#E60A0F1C" />
-    <SolidColorBrush x:Key="DividerBrush" Color="#337FA9F0" />
+    <SolidColorBrush x:Key="GlassTintBrush" Color="#F80A0F1C" />
+    <SolidColorBrush x:Key="DividerBrush" Color="#4D7FA9F0" />
     <SolidColorBrush x:Key="AccentBrush" Color="#A9C4F5" />
-    <SolidColorBrush x:Key="TextBrush" Color="#EAF2FF" />
-    <SolidColorBrush x:Key="MutedBrush" Color="#AFC2DE" />
+    <SolidColorBrush x:Key="TextBrush" Color="#F5FAFF" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#C3D3EA" />
     <SolidColorBrush x:Key="PillBrush" Color="#66142033" />
     <SolidColorBrush x:Key="PillBorderBrush" Color="#337FA9F0" />
+
+    <!-- Клетка на фоне панелей: еле заметная сетка тонких линий.
+         DrawingBrush кэшируется и тайлится видеокартой - дешёвая альтернатива
+         отдельным Line-элементам (те дали бы сотни visual'ов на панель). -->
+    <DrawingBrush x:Key="GlassGridBrush"
+                  TileMode="Tile"
+                  Viewport="0,0,12,12"
+                  ViewportUnits="Absolute"
+                  Stretch="None"
+                  RenderOptions.CachingHint="Cache"
+                  RenderOptions.CacheInvalidationThresholdMinimum="0.5"
+                  RenderOptions.CacheInvalidationThresholdMaximum="2.0">
+        <DrawingBrush.Drawing>
+            <GeometryDrawing Brush="{x:Null}">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#0EFFFFFF" Thickness="1" />
+                </GeometryDrawing.Pen>
+                <GeometryDrawing.Geometry>
+                    <GeometryGroup>
+                        <LineGeometry StartPoint="0,0" EndPoint="12,0" />
+                        <LineGeometry StartPoint="0,0" EndPoint="0,12" />
+                    </GeometryGroup>
+                </GeometryDrawing.Geometry>
+            </GeometryDrawing>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
 
     <!-- Рамка 45°: светлый льдистый -> насыщенный синий -->
     <LinearGradientBrush x:Key="PanelBorderGradient" StartPoint="0,0" EndPoint="1,1">
@@ -187,10 +213,15 @@
                         <!-- слой 1: однотонная полупрозрачная заливка, сквозь неё видно реальный экран -->
                         <Border CornerRadius="12" Background="{DynamicResource GlassTintBrush}" />
 
+                        <!-- слой 1½: еле заметная клетка. Немного сжата по сторонам, чтобы
+                             не вылезать за скруглённые углы. -->
+                        <Border CornerRadius="12" Margin="1" IsHitTestVisible="False" Background="{DynamicResource GlassGridBrush}" />
+
                         <!-- слой 2: контент с градиентной рамкой, без эффектов -->
                         <Border CornerRadius="12"
                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}">
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                ClipToBounds="True">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />

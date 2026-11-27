@@ -11,13 +11,13 @@ public sealed class ThemePalette
     /// <summary>Фон панелей (стекло).</summary>
     public string Glass { get; set; } = "#D9182540";
 
-    public string Divider { get; set; } = "#337FA9F0";
+    public string Divider { get; set; } = "#4D7FA9F0";
     public string Accent { get; set; } = "#A9C4F5";
 
     /// <summary>Второй акцент — конец градиента рамки и cava.</summary>
     public string Accent2 { get; set; } = "#5B8DEF";
-    public string Text { get; set; } = "#EAF2FF";
-    public string Muted { get; set; } = "#AFC2DE";
+    public string Text { get; set; } = "#F5FAFF";
+    public string Muted { get; set; } = "#C3D3EA";
     public string Pill { get; set; } = "#66142033";
     public string PillBorder { get; set; } = "#337FA9F0";
 
@@ -51,17 +51,17 @@ public sealed class ThemePalette
     public static ThemePalette IceBlue => new()
     {
         Name = "Ice blue",
-        Glass = "#E60A0F1C",
+        Glass = "#F80A0F1C",
     };
 
     public static ThemePalette ForestMint => new()
     {
         Name = "Forest mint",
-        Glass = "#D90E1F1A",
-        Divider = "#334FA98A",
+        Glass = "#EB0E1F1A",
+        Divider = "#4D4FA98A",
         Accent = "#7FE3B8",
-        Text = "#E4F2EA",
-        Muted = "#A8C4B6",
+        Text = "#F2FBF6",
+        Muted = "#C2DCCD",
         Pill = "#66101C18",
         PillBorder = "#337FE3B8",
         BorderFrom = "#9BE8C6",
@@ -79,12 +79,12 @@ public sealed class ThemePalette
     public static ThemePalette SakuraPink => new()
     {
         Name = "Sakura pink",
-        Glass = "#D918121E",
-        Divider = "#45C792EA",
+        Glass = "#EB18121E",
+        Divider = "#5EC792EA",
         Accent = "#FF75B5",
         Accent2 = "#C792EA",
-        Text = "#F4B8E4",
-        Muted = "#B99AC8",
+        Text = "#FBD1EE",
+        Muted = "#CDB3DA",
         Pill = "#661E1626",
         PillBorder = "#40FF75B5",
         BorderFrom = "#FF75B5",

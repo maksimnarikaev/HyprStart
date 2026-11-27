@@ -171,8 +171,8 @@ public class ThemeAndSearchTests
         var theme = ThemePalette.SakuraPink;
         Assert.Equal("#FF75B5", theme.Accent);
         Assert.Equal("#C792EA", theme.Accent2);
-        Assert.Equal("#F4B8E4", theme.Text);
-        Assert.StartsWith("#D9", theme.Glass);
+        Assert.Equal("#FBD1EE", theme.Text);
+        Assert.StartsWith("#EB", theme.Glass);
     }
 
     [Fact]
