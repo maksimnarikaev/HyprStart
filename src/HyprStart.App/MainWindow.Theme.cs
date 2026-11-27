@@ -36,6 +36,7 @@ public partial class MainWindow : Window
 
         _awake = true;
         _tick = 0;
+        _quietTicks = 0;
         OnTick();                 // первый тик сразу, без ожидания таймера
 
         _tickTimer.Start();
@@ -126,6 +127,13 @@ public partial class MainWindow : Window
 
     /// <summary>Замедление падения: за каждый тик теряем лишь долю.</summary>
     private const double MeterSilenceFloor = 0.006;
+
+    // Адаптивный опрос WASAPI: в тишине не дёргаем COM 16 раз в секунду.
+    // _quietTicks — фаза тихой пачки [0, MeterIdleSampleEvery): 0 значит "опросить",
+    // остальные значения — пропуск тика. Пока шкала плоская и тихо, SamplePeak()
+    // вызывается лишь раз в MeterIdleSampleEvery тиков, а не 16 раз в секунду.
+    private const int MeterIdleSampleEvery = 4;
+    private int _quietTicks;
     private ScaleTransform? _scale;
 
     /// <summary>Градиент заливки бара: сверху AccentTo, а к низу Accent.</summary>
@@ -194,6 +202,16 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateMeter()
     {
+        // Тишина длится: опрашиваем WASAPI (COM) не каждый тик, а раз в
+        // MeterIdleSampleEvery, иначе 16 раз в секунду дёргаем COM впустую.
+        // _quietTicks = фаза внутри пачки тихих тиков: 0 означает "пора опросить".
+        if (_quietTicks != 0)
+        {
+            _quietTicks = (_quietTicks + 1) % MeterIdleSampleEvery;
+            SetTrackText();
+            return;
+        }
+
         _monitor.SamplePeak();
         float peak = _monitor.Peak;
 
@@ -202,9 +220,12 @@ public partial class MainWindow : Window
         bool quiet = peak <= 0.02f && IsMeterFlat();
         if (quiet)
         {
+            _quietTicks = (_quietTicks + 1) % MeterIdleSampleEvery;
             SetTrackText();
             return;
         }
+
+        _quietTicks = 0;
 
         bool active = peak > MeterMinScale;
 
