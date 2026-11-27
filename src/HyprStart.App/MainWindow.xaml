@@ -51,7 +51,7 @@
 
                     <StackPanel Visibility="{Binding AppVisibility}" Background="Transparent"
                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                        <Image Source="{Binding Icon}" Margin="0,6,0,3" Width="44" Height="44"
+                        <Image Source="{Binding Icon}" Margin="0,7,0,3" Width="50" Height="50"
                                Stretch="Uniform" HorizontalAlignment="Center" IsHitTestVisible="False"
                                RenderOptions.BitmapScalingMode="HighQuality" />
                         <TextBlock Text="{Binding Name}" FontSize="10.5" TextWrapping="Wrap"

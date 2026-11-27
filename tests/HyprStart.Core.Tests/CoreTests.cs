@@ -493,12 +493,12 @@ public class PinTileGeometryTests
     [Fact]
     public void TileHeight_IsCompactAndWidthIndependent()
     {
-        // Компактная плитка: ~96 px высоты независимо от ширины (было ~136 при inner=626).
+        // Компактная плитка: фиксированная высота независимо от ширины (было ~136 при inner=626).
         Assert.Equal(PinTileGeometry.TileHeightValue, PinTileGeometry.TileHeight(100));
         Assert.Equal(PinTileGeometry.TileHeightValue, PinTileGeometry.TileHeight(2000));
-        Assert.Equal(96, PinTileGeometry.TileHeightValue);
-        Assert.True(PinTileGeometry.IconSize >= 40 && PinTileGeometry.IconSize <= 48,
-            $"иконка {PinTileGeometry.IconSize} вне разумного диапазона 40..48");
+        Assert.Equal(100, PinTileGeometry.TileHeightValue);
+        Assert.True(PinTileGeometry.IconSize >= 44 && PinTileGeometry.IconSize <= 56,
+            $"иконка {PinTileGeometry.IconSize} вне разумного диапазона 44..56");
     }
 
     [Theory]

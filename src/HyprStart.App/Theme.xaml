@@ -18,7 +18,8 @@
          ViewportUnits="Absolute" + AlignX/AlignY="Left/Top": сетка привязана к
          системе координат экрана, а не к левому верхнему углу каждой панели,
          поэтому линии идут непрерывно и совпадают на стыках соседних окон.
-         Альфа 04 (~1.5%) - линии угадываются, а не читаются как рисунок. -->
+         Альфа 07 (~2.7%) - линии заметны ровно настолько, чтобы читалась
+         фактура, но не перебивали иконки и текст. -->
     <DrawingBrush x:Key="GlassGridBrush"
                   TileMode="Tile"
                   Viewport="0,0,108,108"
@@ -34,7 +35,7 @@
         <DrawingBrush.Drawing>
             <GeometryDrawing Brush="{x:Null}">
                 <GeometryDrawing.Pen>
-                    <Pen Brush="#04FFFFFF" Thickness="1" />
+                    <Pen Brush="#07FFFFFF" Thickness="0.9" />
                 </GeometryDrawing.Pen>
                 <GeometryDrawing.Geometry>
                     <GeometryGroup>
@@ -227,12 +228,16 @@
                              не вылезать за скруглённые углы. -->
                         <Border CornerRadius="12" Margin="1" IsHitTestVisible="False" Background="{DynamicResource GlassGridBrush}" />
 
-                        <!-- слой 2: контент с градиентной рамкой, без эффектов -->
+                        <!-- слой 2: контент с градиентной рамкой, без эффектов.
+                             Клип живёт на внутренней сетке, а не на этом Border: иначе
+                             при дробной толщине (1.5 у активной панели) правая и нижняя
+                             грани срезаются на полпикселя и рамка визуально исчезает. -->
                         <Border CornerRadius="12"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                ClipToBounds="True">
-                            <Grid>
+                                SnapsToDevicePixels="True"
+                                UseLayoutRounding="True">
+                            <Grid ClipToBounds="True" Margin="{TemplateBinding BorderThickness}">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
