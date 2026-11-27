@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <Version>1.0.1</Version>
     <AssemblyName>HyprStart</AssemblyName>
     <RootNamespace>HyprStart.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
