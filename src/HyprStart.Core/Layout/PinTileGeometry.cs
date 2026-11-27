@@ -32,7 +32,7 @@ public static class PinTileGeometry
     public const double MaxTileWidth = 124;
 
     /// <summary>Отступ между плитками по горизонтали и вертикали (DIP).</summary>
-    public const double TileGap = 8;
+    public const double TileGap = 12;
 
     /// <summary>
     /// Высота плитки (DIP). Компактная фиксированная: иконка 50x50 + подпись в одну-две

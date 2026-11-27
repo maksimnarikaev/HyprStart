@@ -234,10 +234,8 @@
                              грани срезаются на полпикселя и рамка визуально исчезает. -->
                         <Border CornerRadius="12"
                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                SnapsToDevicePixels="True"
-                                UseLayoutRounding="True">
-                            <Grid ClipToBounds="True" Margin="{TemplateBinding BorderThickness}">
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
