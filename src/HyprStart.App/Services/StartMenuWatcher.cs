@@ -56,7 +56,9 @@ internal sealed class StartMenuWatcher : IDisposable
             var watcher = new FileSystemWatcher(root)
             {
                 IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite,
+                // LastWrite не нужен: ярлыки не «дописываются», а создаются/удаляются/переименовываются.
+                // Без него установщики (каждый пишет свои .lnk) не будят пересборку индекса лишний раз.
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName,
             };
 
             watcher.Created += (_, e) => OnChanged(e.FullPath);

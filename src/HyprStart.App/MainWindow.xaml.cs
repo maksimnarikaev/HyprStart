@@ -598,6 +598,7 @@ public partial class MainWindow : Window
     public void SetApps(AppIndex index, IReadOnlyList<AppItemVm> items)
     {
         _entries = index.Entries;
+        _searchCache.Clear(); // индекс пересобран: прежние результаты поиска недействительны
         _icons.Clear();
         foreach (var item in items)
         {
@@ -715,12 +716,43 @@ public partial class MainWindow : Window
         return rows;
     }
 
+    // Кэш «запрос -> отсортированные записи». Снимок статистики запусков храним рядом:
+    // если он изменился (приложение запустили), кэш сбрасывается — frecency не врёт.
+    private const int SearchCacheLimit = 24;
+    private readonly Dictionary<string, List<AppEntry>> _searchCache = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, (int Count, DateTime LastUsed)>? _searchCacheUsage;
+    private int _searchCacheVersion = -1;
+
+    private List<AppEntry> SearchEntries(string query)
+    {
+        // frecency: берём в расчёт статистику запусков, чтобы частое поднималось выше.
+        // Снимок берём только при смене версии статистики, иначе кэш жил бы один кадр.
+        if (_searchCacheVersion != _usage.Version)
+        {
+            _searchCache.Clear();
+            _searchCacheUsage = null;
+            _searchCacheVersion = _usage.Version;
+        }
+
+        _searchCacheUsage ??= _usage.Snapshot();
+        var usage = _searchCacheUsage;
+
+        if (_searchCache.TryGetValue(query, out var cached)) return cached;
+
+        var found = AppSearch.Filter(_entries, query, usage, DateTime.Now);
+
+        if (_searchCache.Count >= SearchCacheLimit) _searchCache.Clear();
+        _searchCache[query] = found;
+
+        return found;
+    }
+
     private List<AppRowVm> BuildSearchRows(string query)
     {
-        var rows = new List<AppRowVm>();
+        var matches = SearchEntries(query);
+        var rows = new List<AppRowVm>(matches.Count);
 
-        // frecency: берём в расчёт статистику запусков, чтобы частое поднималось выше
-        foreach (var entry in AppSearch.Filter(_entries, query, _usage.Snapshot(), DateTime.Now))
+        foreach (var entry in matches)
         {
             rows.Add(AppRowVm.App(entry, 0, entry.Group, IconFor(entry)));
         }

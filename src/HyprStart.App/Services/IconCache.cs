@@ -1,8 +1,9 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using HyprStart.App.Interop;
@@ -82,29 +83,40 @@ internal static class IconCache
             double bestScore = -1;
             string bestSource = string.Empty;
 
+            // Сначала считаем очки по метаданным (приоритет + заполнение холста),
+            // и только победителю делаем дорогой CropToContent. Раньше кроп
+            // выполнялся для каждого кандидата, хотя в кадр попадал один.
             foreach (var (image, priority, source) in candidates)
             {
-                using var cropped = CropToContent(image);
-                double coverage = Coverage(cropped, image);
-
-                // приоритет источника плюс фактическое заполнение холста
+                double coverage = Coverage(image);
                 double score = priority * 40 + coverage * 100;
 
                 if (score <= bestScore) continue;
 
-                best?.Dispose();
-                best = (Bitmap)cropped.Clone();
                 bestScore = score;
+                best = image; // без Clone: владение переходит сюда (из candidates уберём после цикла)
                 bestSource = $"{source} ({coverage:P0})";
             }
 
-            if (best is null) return false;
+            bool saved = false;
 
-            using (best)
-            using (var square = ScaleIntoSquare(best, IconSize))
+            if (best is not null)
             {
-                square.Save(outputPath, ImageFormat.Png);
+                var winner = best;
+                best = null;
+                candidates.RemoveAll(c => ReferenceEquals(c.Image, winner)); // владение у winner
+
+                using (winner)
+                using (var cropped = CropToContent(winner))
+                using (var square = ScaleIntoSquare(cropped, IconSize))
+                {
+                    square.Save(outputPath, ImageFormat.Png);
+                }
+
+                saved = true;
             }
+
+            if (!saved) return false;
 
             AppLog.Write($"icon: '{entry.Name}' <- {bestSource}");
             return new FileInfo(outputPath).Length > 0;
@@ -288,14 +300,81 @@ internal static class IconCache
         }
     }
 
-    /// <summary>Насколько рисунок занимает холст: узкие логотипы не штрафуем (берём максимум из сторон).</summary>
-    private static double Coverage(Bitmap cropped, Bitmap original)
+    /// <summary>
+    /// Грубая оценка «заполнения холста» без LockBits: доля непрозрачных точек
+    /// на сетке 16x16. Используется только для ранжирования кандидатов —
+    /// точную обрезку делает CropToContent, и только для победителя.
+    /// </summary>
+    private static double Coverage(Bitmap image)
     {
-        if (original.Width <= 0 || original.Height <= 0) return 0;
+        if (image.Width <= 0 || image.Height <= 0) return 0;
 
-        double widthRatio = (double)cropped.Width / original.Width;
-        double heightRatio = (double)cropped.Height / original.Height;
-        return Math.Max(widthRatio, heightRatio);
+        const int Grid = 16;
+        int opaque = 0;
+
+        // GetPixel маршалит вызов на каждую точку (256 вызовов на кандидата).
+        // Здесь — одна блокировка и копирование только нужных строк в общий буфер.
+        var rect = new Rectangle(0, 0, image.Width, image.Height);
+
+        try
+        {
+            var data = image.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+
+            try
+            {
+                int stride = data.Stride;
+                int rowBytes = image.Width * 4;
+                var buffer = new byte[Math.Abs(stride)];
+
+                for (int gy = 0; gy < Grid; gy++)
+                {
+                    int y = Math.Min(image.Height - 1, (int)((gy + 0.5) * image.Height / Grid));
+                    IntPtr rowPtr = stride >= 0
+                        ? IntPtr.Add(data.Scan0, y * stride)
+                        : IntPtr.Add(data.Scan0, (image.Height - 1 - y) * -stride);
+
+                    Marshal.Copy(rowPtr, buffer, 0, rowBytes);
+
+                    for (int gx = 0; gx < Grid; gx++)
+                    {
+                        int x = Math.Min(image.Width - 1, (int)((gx + 0.5) * image.Width / Grid));
+
+                        if (buffer[x * 4 + 3] > 24) opaque++; // BGRA: альфа — 4-й байт
+                    }
+                }
+            }
+            finally
+            {
+                image.UnlockBits(data);
+            }
+        }
+        catch (Exception)
+        {
+            return FallbackCoverage(image); // формат не блокируется как 32bppArgb
+        }
+
+        return (double)opaque / (Grid * Grid);
+    }
+
+    /// <summary>Запасной путь для форматов, которые не блокируются как 32bppArgb.</summary>
+    private static double FallbackCoverage(Bitmap image)
+    {
+        const int Grid = 16;
+        int opaque = 0;
+
+        for (int gy = 0; gy < Grid; gy++)
+        {
+            int y = Math.Min(image.Height - 1, (int)((gy + 0.5) * image.Height / Grid));
+
+            for (int gx = 0; gx < Grid; gx++)
+            {
+                int x = Math.Min(image.Width - 1, (int)((gx + 0.5) * image.Width / Grid));
+
+                if (image.GetPixel(x, y).A > 24) opaque++;
+            }
+        }
+
+        return (double)opaque / (Grid * Grid);
     }
 
     /// <summary>Иконка игры из %Steam%\appcache\librarycache\&lt;appid&gt;_icon.jpg|png.</summary>
